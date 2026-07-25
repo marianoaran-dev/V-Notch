@@ -85,6 +85,8 @@ public class NotchSettings
 
     public bool EnableHelloGreeting { get; set; } = true;
 
+    public bool EnableSpotlight { get; set; } = true;
+
     public bool EnableSpotifyLyrics { get; set; } = true;
 
     public bool EnableSpotifyCanvas { get; set; } = true;

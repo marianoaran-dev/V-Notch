@@ -131,6 +131,7 @@
 - Spring animations for language switching and UI element transitions
 
 ### System
+- **Spotlight Search** — Press `Alt + Space` to find and open installed apps, indexed files, and folders
 - **Fullscreen Aware** — Automatically hides when gaming or watching movies (supports both exclusive and windowed fullscreen)
 - **Slide animation** when hiding/showing for fullscreen transitions
 - **Multi-Monitor** — Choose which display shows the notch
@@ -180,6 +181,8 @@ Muốn dùng code mới nhất mà chưa có bản release? Bạn có thể tự
 | **Scroll Up** | Switch back to Media Controls |
 | **Click** | Toggle compact/expanded view |
 | **Media buttons** | Play/Pause, Next/Previous, Seek |
+| **Alt + Space** | Open or close Spotlight Search |
+| **↑ / ↓, Enter, Esc** | Navigate results, open the selected result, or close Spotlight |
 
 ### File Shelf
 | Action | Result |

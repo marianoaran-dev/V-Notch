@@ -3692,6 +3692,171 @@ public static class Loc
         AddMissingEnglishAndVietnameseStrings();
         AddMissingSpotifyLoginStrings();
         AddNewUiStrings();
+        AddLiquidGlassMaterialPresetStrings();
+        AddSpotlightStrings();
+    }
+
+    private static void AddLiquidGlassMaterialPresetStrings()
+    {
+        AddStrings("es",
+            ("settings.glass.preset.ultrathin", "Material ultrafino"),
+            ("settings.glass.preset.thin", "Material fino"),
+            ("settings.glass.preset.regular", "Material normal"),
+            ("settings.glass.preset.thick", "Material grueso"),
+            ("settings.glass.preset.ultrathick", "Material ultragrueso"),
+            ("settings.glass.preset.clear", "Cristal líquido transparente"));
+        AddStrings("fr",
+            ("settings.glass.preset.ultrathin", "Matériau ultra-fin"),
+            ("settings.glass.preset.thin", "Matériau fin"),
+            ("settings.glass.preset.regular", "Matériau standard"),
+            ("settings.glass.preset.thick", "Matériau épais"),
+            ("settings.glass.preset.ultrathick", "Matériau ultra-épais"),
+            ("settings.glass.preset.clear", "Verre liquide transparent"));
+        AddStrings("de",
+            ("settings.glass.preset.ultrathin", "Ultradünnes Material"),
+            ("settings.glass.preset.thin", "Dünnes Material"),
+            ("settings.glass.preset.regular", "Normales Material"),
+            ("settings.glass.preset.thick", "Dickes Material"),
+            ("settings.glass.preset.ultrathick", "Ultradickes Material"),
+            ("settings.glass.preset.clear", "Klares Flüssigglas"));
+        AddStrings("ja",
+            ("settings.glass.preset.ultrathin", "超薄型マテリアル"),
+            ("settings.glass.preset.thin", "薄型マテリアル"),
+            ("settings.glass.preset.regular", "標準マテリアル"),
+            ("settings.glass.preset.thick", "厚型マテリアル"),
+            ("settings.glass.preset.ultrathick", "超厚型マテリアル"),
+            ("settings.glass.preset.clear", "透明なリキッドガラス"));
+        AddStrings("hi",
+            ("settings.glass.preset.ultrathin", "अति पतली सामग्री"),
+            ("settings.glass.preset.thin", "पतली सामग्री"),
+            ("settings.glass.preset.regular", "सामान्य सामग्री"),
+            ("settings.glass.preset.thick", "मोटी सामग्री"),
+            ("settings.glass.preset.ultrathick", "अति मोटी सामग्री"),
+            ("settings.glass.preset.clear", "पारदर्शी लिक्विड ग्लास"));
+    }
+
+    private static void AddSpotlightStrings()
+    {
+        AddStrings("en",
+            ("spotlight.placeholder", "Search apps and files"),
+            ("spotlight.kind.application", "Application"),
+            ("spotlight.searching", "Searching…"),
+            ("spotlight.searching.hint", "Checking applications and the Windows Search index."),
+            ("spotlight.noResults", "No results found"),
+            ("spotlight.noResults.hint", "Try another app or file name."),
+            ("spotlight.unavailable", "Windows Search is unavailable"),
+            ("spotlight.unavailable.hint", "Application search still works. Check the Windows Search service for files."),
+            ("settings.enableSpotlight", "Spotlight search"),
+            ("settings.enableSpotlight.hint", "Press Alt + Space to search applications and indexed files."),
+            ("settings.enableSpotlight.conflict", "Alt + Space is currently used by another app. Choose a different hotkey there or disable that launcher."));
+        AddStrings("vi",
+            ("spotlight.placeholder", "Tìm ứng dụng và tệp"),
+            ("spotlight.kind.application", "Ứng dụng"),
+            ("spotlight.searching", "Đang tìm…"),
+            ("spotlight.searching.hint", "Đang kiểm tra ứng dụng và chỉ mục Windows Search."),
+            ("spotlight.noResults", "Không tìm thấy kết quả"),
+            ("spotlight.noResults.hint", "Hãy thử tên ứng dụng hoặc tệp khác."),
+            ("spotlight.unavailable", "Windows Search không khả dụng"),
+            ("spotlight.unavailable.hint", "Tìm ứng dụng vẫn hoạt động. Hãy kiểm tra dịch vụ Windows Search để tìm tệp."),
+            ("settings.enableSpotlight", "Tìm kiếm Spotlight"),
+            ("settings.enableSpotlight.hint", "Nhấn Alt + Space để tìm ứng dụng và tệp đã được lập chỉ mục."),
+            ("settings.enableSpotlight.conflict", "Alt + Space hiện đang được ứng dụng khác sử dụng. Hãy đổi phím tắt ở ứng dụng đó hoặc tắt launcher đó."));
+
+        AddStrings("es",
+            ("spotlight.placeholder", "Buscar aplicaciones y archivos"),
+            ("spotlight.kind.application", "Aplicación"),
+            ("spotlight.searching", "Buscando…"),
+            ("spotlight.searching.hint", "Comprobando aplicaciones y el índice de Windows Search."),
+            ("spotlight.noResults", "No se encontraron resultados"),
+            ("spotlight.noResults.hint", "Prueba con otro nombre de aplicación o archivo."),
+            ("spotlight.unavailable", "Windows Search no está disponible"),
+            ("spotlight.unavailable.hint", "La búsqueda de aplicaciones sigue funcionando. Comprueba el servicio Windows Search para buscar archivos."),
+            ("settings.enableSpotlight", "Búsqueda Spotlight"),
+            ("settings.enableSpotlight.hint", "Pulsa Alt + Espacio para buscar aplicaciones y archivos indexados."),
+            ("settings.enableSpotlight.conflict", "Alt + Espacio está siendo usado por otra aplicación. Cambia allí el atajo o desactiva ese lanzador."));
+        AddStrings("fr",
+            ("spotlight.placeholder", "Rechercher des applications et des fichiers"),
+            ("spotlight.kind.application", "Application"),
+            ("spotlight.searching", "Recherche…"),
+            ("spotlight.searching.hint", "Vérification des applications et de l’index Windows Search."),
+            ("spotlight.noResults", "Aucun résultat"),
+            ("spotlight.noResults.hint", "Essayez un autre nom d’application ou de fichier."),
+            ("spotlight.unavailable", "Windows Search est indisponible"),
+            ("spotlight.unavailable.hint", "La recherche d’applications fonctionne toujours. Vérifiez le service Windows Search pour les fichiers."),
+            ("settings.enableSpotlight", "Recherche Spotlight"),
+            ("settings.enableSpotlight.hint", "Appuyez sur Alt + Espace pour rechercher des applications et des fichiers indexés."),
+            ("settings.enableSpotlight.conflict", "Alt + Espace est utilisé par une autre application. Modifiez-y le raccourci ou désactivez ce lanceur."));
+        AddStrings("de",
+            ("spotlight.placeholder", "Apps und Dateien suchen"),
+            ("spotlight.kind.application", "Anwendung"),
+            ("spotlight.searching", "Suche…"),
+            ("spotlight.searching.hint", "Anwendungen und Windows-Suchindex werden geprüft."),
+            ("spotlight.noResults", "Keine Ergebnisse gefunden"),
+            ("spotlight.noResults.hint", "Versuchen Sie einen anderen App- oder Dateinamen."),
+            ("spotlight.unavailable", "Windows Search ist nicht verfügbar"),
+            ("spotlight.unavailable.hint", "Die App-Suche funktioniert weiterhin. Prüfen Sie für Dateien den Windows-Suchdienst."),
+            ("settings.enableSpotlight", "Spotlight-Suche"),
+            ("settings.enableSpotlight.hint", "Drücken Sie Alt + Leertaste, um Apps und indizierte Dateien zu suchen."),
+            ("settings.enableSpotlight.conflict", "Alt + Leertaste wird von einer anderen App verwendet. Ändern Sie dort den Kurzbefehl oder deaktivieren Sie den Launcher."));
+        AddStrings("ja",
+            ("spotlight.placeholder", "アプリとファイルを検索"),
+            ("spotlight.kind.application", "アプリケーション"),
+            ("spotlight.searching", "検索中…"),
+            ("spotlight.searching.hint", "アプリと Windows Search のインデックスを確認しています。"),
+            ("spotlight.noResults", "結果が見つかりません"),
+            ("spotlight.noResults.hint", "別のアプリ名またはファイル名を試してください。"),
+            ("spotlight.unavailable", "Windows Search を利用できません"),
+            ("spotlight.unavailable.hint", "アプリ検索は引き続き利用できます。ファイル検索には Windows Search サービスを確認してください。"),
+            ("settings.enableSpotlight", "Spotlight 検索"),
+            ("settings.enableSpotlight.hint", "Alt + Space でアプリとインデックス済みファイルを検索します。"),
+            ("settings.enableSpotlight.conflict", "Alt + Space は別のアプリで使用されています。そのアプリのショートカットを変更するか、ランチャーを無効にしてください。"));
+        AddStrings("hi",
+            ("spotlight.placeholder", "ऐप और फ़ाइलें खोजें"),
+            ("spotlight.kind.application", "ऐप्लिकेशन"),
+            ("spotlight.searching", "खोजा जा रहा है…"),
+            ("spotlight.searching.hint", "ऐप और Windows Search इंडेक्स जाँचे जा रहे हैं।"),
+            ("spotlight.noResults", "कोई परिणाम नहीं मिला"),
+            ("spotlight.noResults.hint", "किसी दूसरे ऐप या फ़ाइल नाम से खोजें।"),
+            ("spotlight.unavailable", "Windows Search उपलब्ध नहीं है"),
+            ("spotlight.unavailable.hint", "ऐप खोज अभी भी काम करती है। फ़ाइलों के लिए Windows Search सेवा जाँचें।"),
+            ("settings.enableSpotlight", "Spotlight खोज"),
+            ("settings.enableSpotlight.hint", "ऐप और इंडेक्स की गई फ़ाइलें खोजने के लिए Alt + Space दबाएँ।"),
+            ("settings.enableSpotlight.conflict", "Alt + Space किसी दूसरे ऐप में इस्तेमाल हो रहा है। वहाँ शॉर्टकट बदलें या उस लॉन्चर को बंद करें।"));
+        AddStrings("en",
+            ("spotlight.results", "Results"),
+            ("spotlight.navigate", "Navigate"),
+            ("spotlight.open", "Open"),
+            ("spotlight.close", "Close"));
+        AddStrings("vi",
+            ("spotlight.results", "K\u1ebft qu\u1ea3"),
+            ("spotlight.navigate", "Di chuy\u1ec3n"),
+            ("spotlight.open", "M\u1edf"),
+            ("spotlight.close", "\u0110\u00f3ng"));
+        AddStrings("es",
+            ("spotlight.results", "Resultados"),
+            ("spotlight.navigate", "Navegar"),
+            ("spotlight.open", "Abrir"),
+            ("spotlight.close", "Cerrar"));
+        AddStrings("fr",
+            ("spotlight.results", "R\u00e9sultats"),
+            ("spotlight.navigate", "Naviguer"),
+            ("spotlight.open", "Ouvrir"),
+            ("spotlight.close", "Fermer"));
+        AddStrings("de",
+            ("spotlight.results", "Ergebnisse"),
+            ("spotlight.navigate", "Navigieren"),
+            ("spotlight.open", "\u00d6ffnen"),
+            ("spotlight.close", "Schlie\u00dfen"));
+        AddStrings("ja",
+            ("spotlight.results", "\u7d50\u679c"),
+            ("spotlight.navigate", "\u79fb\u52d5"),
+            ("spotlight.open", "\u958b\u304f"),
+            ("spotlight.close", "\u9589\u3058\u308b"));
+        AddStrings("hi",
+            ("spotlight.results", "\u092a\u0930\u093f\u0923\u093e\u092e"),
+            ("spotlight.navigate", "\u0928\u0947\u0935\u093f\u0917\u0947\u091f"),
+            ("spotlight.open", "\u0916\u094b\u0932\u0947\u0902"),
+            ("spotlight.close", "\u092c\u0902\u0926 \u0915\u0930\u0947\u0902"));
     }
 
     private static void AddStrings(string language, params (string Key, string Value)[] entries)

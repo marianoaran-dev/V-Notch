@@ -1434,6 +1434,25 @@
 
                                         <Border Style="{StaticResource SettingRowBorder}" Margin="0,0,0,4">
                                             <StackPanel>
+                                                <CheckBox x:Name="EnableSpotlightCheck" Content="Spotlight search"/>
+                                                <TextBlock x:Name="EnableSpotlightHint"
+                                                           Text="Press Alt + Space to search applications and indexed files."
+                                                           Style="{StaticResource SettingHintText}"
+                                                           Margin="0,3,0,0"
+                                                           TextWrapping="Wrap"/>
+                                                <TextBlock x:Name="SpotlightHotkeyWarning"
+                                                           Text="Alt + Space is currently used by another app."
+                                                           Foreground="#FFFFB454"
+                                                           FontSize="11.5"
+                                                           Margin="0,5,0,0"
+                                                           TextWrapping="Wrap"
+                                                           Visibility="Collapsed"
+                                                           AutomationProperties.LiveSetting="Polite"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Style="{StaticResource SettingRowBorder}" Margin="0,0,0,4">
+                                            <StackPanel>
                                                 <TextBlock x:Name="LanguageLabel" Text="Language" Style="{StaticResource SettingTitleText}"/>
                                                 <TextBlock x:Name="LanguageHint" Text="Choose the display language for V-Notch."
                                                            Style="{StaticResource SettingHintText}"

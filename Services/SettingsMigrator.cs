@@ -9,7 +9,7 @@ namespace VNotch.Services;
 public static class SettingsMigrator
 {
 
-    public const int CurrentVersion = 11;
+    public const int CurrentVersion = 12;
 
     private static readonly IReadOnlyDictionary<int, Func<JsonObject, JsonObject>> _migrations =
         new Dictionary<int, Func<JsonObject, JsonObject>>
@@ -118,6 +118,14 @@ public static class SettingsMigrator
                 }
 
                 root[nameof(NotchSettings.AnimationFps)] = animationFps;
+                return root;
+            },
+            [11] = root =>
+            {
+                if (!root.ContainsKey(nameof(NotchSettings.EnableSpotlight)))
+                {
+                    root[nameof(NotchSettings.EnableSpotlight)] = true;
+                }
                 return root;
             },
         };

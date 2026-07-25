@@ -65,6 +65,11 @@ public partial class MainWindow : Window
 
     private readonly OverlayWindowController _overlayWindow;
     private readonly ClipboardListenerController _clipboardListener;
+    private readonly ISpotlightController _spotlightController;
+    private bool _spotlightMorphOwnsNotchVisibility;
+    private double _spotlightRestoreNotchOpacity = 1;
+    private double _spotlightRestoreShadowOpacity = 1;
+    private bool _spotlightRestoreNotchHitTesting = true;
     private DispatcherTimer? _fullscreenRecheckTimer;
     private bool _isTrayMenuOpen
     {
@@ -215,7 +220,8 @@ public partial class MainWindow : Window
         BluetoothModule bluetoothModule,
         PrivacyIndicatorModule privacyIndicatorModule,
         WeatherModule weatherModule,
-        SystemMonitorModule systemMonitorModule)
+        SystemMonitorModule systemMonitorModule,
+        ISpotlightController spotlightController)
     {
         InitializeComponent();
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Loc.GetCulture().IetfLanguageTag);
@@ -229,6 +235,7 @@ public partial class MainWindow : Window
         _notchManager = new NotchManager(this, _settings);
         _mediaService = (MediaDetectionService)mediaService;
         _updateService = updateService;
+        _spotlightController = spotlightController;
 
         _animController = new NotchAnimationController(_notchState);
         _musicController = new MusicWidgetController(_notchState);
@@ -410,6 +417,7 @@ public partial class MainWindow : Window
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _overlayWindow.Initialize();
+        _spotlightController.Initialize(this, _settings);
         _clipboardListener.Start();
 
         try
@@ -516,6 +524,7 @@ public partial class MainWindow : Window
         InputMonitorService.MouseActionTriggered -= GlobalMouseHook_MouseLeftButtonDown;
 
         _clipboardListener.Dispose();
+        _spotlightController.Dispose();
         _overlayWindow.Dispose();
         StopZOrderWatchdog();
         StopTitleGradientShift();
@@ -802,9 +811,67 @@ public partial class MainWindow : Window
         return _overlayWindow.GetNotchScreenRect(_collapsedWidth, _collapsedHeight, _cornerRadiusCollapsed);
     }
 
+    internal void SetSpotlightMorphActive(bool active)
+    {
+        if (active == _spotlightMorphOwnsNotchVisibility) return;
+        _spotlightMorphOwnsNotchVisibility = active;
+
+        NotchWrapper.BeginAnimation(OpacityProperty, null);
+        NotchShadowWrapper.BeginAnimation(OpacityProperty, null);
+        if (active)
+        {
+            _spotlightRestoreNotchOpacity = NotchWrapper.Opacity;
+            _spotlightRestoreShadowOpacity = NotchShadowWrapper.Opacity;
+            _spotlightRestoreNotchHitTesting = NotchWrapper.IsHitTestVisible;
+            NotchWrapper.Opacity = 0;
+            NotchShadowWrapper.Opacity = 0;
+            NotchWrapper.IsHitTestVisible = false;
+            return;
+        }
+
+        NotchWrapper.Opacity = _spotlightRestoreNotchOpacity;
+        NotchShadowWrapper.Opacity = _spotlightRestoreShadowOpacity;
+        NotchWrapper.IsHitTestVisible = _spotlightRestoreNotchHitTesting;
+    }
+
+    internal void PlayNotchReturnBounce()
+    {
+        NotchScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        NotchScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        NotchShadowScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        NotchShadowScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+
+        NotchScale.ScaleX = 1;
+        NotchScale.ScaleY = 1;
+        NotchShadowScale.ScaleX = 1;
+        NotchShadowScale.ScaleY = 1;
+
+        if (CompactThumbnailBorder != null) CompactThumbnailBorder.Opacity = 1;
+        if (ThumbnailBorder != null) ThumbnailBorder.Opacity = 1;
+        _isAnimating = false;
+
+        var bounce = new DoubleAnimationUsingKeyFrames();
+        bounce.KeyFrames.Add(new EasingDoubleKeyFrame(1.12,
+            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)),
+            new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+        bounce.KeyFrames.Add(new EasingDoubleKeyFrame(1,
+            KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(600)),
+            _easeSoftSpring));
+        Timeline.SetDesiredFrameRate(bounce, VNotch.Services.AnimationConfig.TargetFps);
+
+        NotchScale.BeginAnimation(ScaleTransform.ScaleXProperty, bounce);
+        NotchScale.BeginAnimation(ScaleTransform.ScaleYProperty, bounce);
+        NotchShadowScale.BeginAnimation(ScaleTransform.ScaleXProperty, bounce);
+        NotchShadowScale.BeginAnimation(ScaleTransform.ScaleYProperty, bounce);
+    }
+
     private void OpenAppSettings()
     {
-        var settingsWindow = new SettingsWindow(_settings, _settingsService, _bluetoothModule)
+        var settingsWindow = new SettingsWindow(
+            _settings,
+            _settingsService,
+            _bluetoothModule,
+            _spotlightController.IsHotkeyRegistered)
         {
             Owner = this
         };
@@ -826,6 +893,8 @@ public partial class MainWindow : Window
             _notchManager.UpdateSettings(_settings);
             _fileShelf.UpdateSettings(_settings);
             _fullscreenController.UpdateSettings(_settings);
+            _spotlightController.ApplySettings(_settings);
+            settingsWindow.SetSpotlightHotkeyStatus(_spotlightController.IsHotkeyRegistered);
             ApplySettings(sizeChanged);
             _weatherModule.OnSettingsChanged(_settings);
 
@@ -872,32 +941,7 @@ public partial class MainWindow : Window
 
         settingsWindow.Closed += (s, e) =>
         {
-            NotchScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-            NotchScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
-            NotchShadowScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-            NotchShadowScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
-
-            NotchScale.ScaleX = 1.0; NotchScale.ScaleY = 1.0;
-            NotchShadowScale.ScaleX = 1.0;
-            NotchShadowScale.ScaleY = 1.0;
-
-            if (CompactThumbnailBorder != null) CompactThumbnailBorder.Opacity = 1;
-            if (ThumbnailBorder != null) ThumbnailBorder.Opacity = 1;
-            _isAnimating = false;
-
-            var bounceAnim = new DoubleAnimationUsingKeyFrames();
-            bounceAnim.KeyFrames.Add(new EasingDoubleKeyFrame(1.12,
-                KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120)),
-                new QuadraticEase { EasingMode = EasingMode.EaseOut }));
-            bounceAnim.KeyFrames.Add(new EasingDoubleKeyFrame(1.0,
-                KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(600)),
-                _easeSoftSpring));
-            Timeline.SetDesiredFrameRate(bounceAnim, VNotch.Services.AnimationConfig.TargetFps);
-
-            NotchScale.BeginAnimation(ScaleTransform.ScaleXProperty, bounceAnim);
-            NotchScale.BeginAnimation(ScaleTransform.ScaleYProperty, bounceAnim);
-            NotchShadowScale.BeginAnimation(ScaleTransform.ScaleXProperty, bounceAnim);
-            NotchShadowScale.BeginAnimation(ScaleTransform.ScaleYProperty, bounceAnim);
+            PlayNotchReturnBounce();
         };
 
         settingsWindow.ShowDialog();

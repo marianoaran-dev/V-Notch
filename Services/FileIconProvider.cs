@@ -71,7 +71,7 @@ internal static class FileIconProvider
 
         try
         {
-            if (!File.Exists(filePath)) return null;
+            if (!File.Exists(filePath) && !Directory.Exists(filePath)) return null;
 
             if (_iconCache.Count >= MaxCacheSize)
                 EvictOldest();
@@ -174,6 +174,7 @@ internal static class FileIconProvider
     {
         try
         {
+            if (Directory.Exists(filePath)) return TryGetShellThumbnail(filePath, 128);
             using var icon = System.Drawing.Icon.ExtractAssociatedIcon(filePath);
             if (icon == null) return null;
 

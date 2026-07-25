@@ -123,4 +123,35 @@ public class SettingsMigratorTests
         Assert.Equal(SettingsMigrator.CurrentVersion, settings.SettingsVersion);
         Assert.Equal(144, settings.AnimationFps);
     }
+
+    [Fact]
+    public void Migrate_Version11_EnablesSpotlightByDefault()
+    {
+        const string rawJson = """
+            {
+              "SettingsVersion": 11
+            }
+            """;
+
+        var (settings, migrated) = SettingsMigrator.Migrate(rawJson);
+
+        Assert.True(migrated);
+        Assert.Equal(SettingsMigrator.CurrentVersion, settings.SettingsVersion);
+        Assert.True(settings.EnableSpotlight);
+    }
+
+    [Fact]
+    public void Migrate_Version11_PreservesExplicitSpotlightOptOut()
+    {
+        const string rawJson = """
+            {
+              "SettingsVersion": 11,
+              "EnableSpotlight": false
+            }
+            """;
+
+        var (settings, _) = SettingsMigrator.Migrate(rawJson);
+
+        Assert.False(settings.EnableSpotlight);
+    }
 }

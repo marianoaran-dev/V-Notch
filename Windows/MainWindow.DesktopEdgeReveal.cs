@@ -19,6 +19,7 @@ public partial class MainWindow
     private DispatcherTimer? _desktopDemotionDelayTimer;
     private EventHandler? _desktopTransparentFrameHandler;
     private int _desktopTransparentFramesObserved;
+    private bool _desktopPointerInHoverZone;
 
     /// <summary>
     /// Stay-on-desktop normally places the HWND behind regular applications. While
@@ -35,28 +36,95 @@ public partial class MainWindow
 
         bool atRevealEdge = _notchManager.HoverService.IsPointInTopEdgeRevealZone(point);
         bool inNotchHoverZone = _notchManager.HoverService.IsPointInHoverZone(point);
+        _desktopPointerInHoverZone = inNotchHoverZone;
+        bool interactionActive = IsDesktopNotchInteractionActive();
 
         if (atRevealEdge)
         {
             CancelScheduledDesktopDemotion();
             PromoteFromDesktopLayer();
         }
-        else if (_desktopPromotionPending && !inNotchHoverZone)
+        else if (_desktopPromotionPending && !interactionActive)
         {
             // Once the edge has armed the reveal, allow the pointer to travel down
             // into the notch. Cancelling as soon as it left the 3 px edge strip made
             // the transparent/promotion frames alternate during a normal gesture.
             CancelPendingDesktopPromotion();
         }
-        else if (_isDesktopEdgePromoted && !inNotchHoverZone)
+        else if (_isDesktopEdgePromoted && !interactionActive)
         {
             ScheduleDesktopLayerDemotion();
         }
-        else if (_isDesktopEdgePromoted && inNotchHoverZone)
+        else if (_isDesktopEdgePromoted && interactionActive)
         {
             CancelScheduledDesktopDemotion();
             if (_desktopDemotionPending) CancelDesktopLayerDemotion();
         }
+    }
+
+    private bool IsDesktopNotchInteractionActive()
+    {
+        bool pointerOverNotch = NotchWrapper?.IsMouseOver == true;
+        bool inputCapturedWithin = IsMouseCaptureWithin
+                                   || IsStylusCaptureWithin
+                                   || AreAnyTouchesCapturedWithin;
+        bool ownedWindowInteractionActive = HasActiveOwnedWindowInteraction();
+
+        return ShouldKeepDesktopPromotion(
+            _desktopPointerInHoverZone,
+            pointerOverNotch,
+            inputCapturedWithin,
+            IsKeyboardFocusWithin,
+            ownedWindowInteractionActive);
+    }
+
+    private bool HasActiveOwnedWindowInteraction()
+    {
+        foreach (Window ownedWindow in OwnedWindows)
+        {
+            if (IsWindowInteractionActive(ownedWindow))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsWindowInteractionActive(Window window)
+    {
+        if (!window.IsVisible)
+            return false;
+
+        if (window.IsActive
+            || window.IsMouseOver
+            || window.IsMouseCaptureWithin
+            || window.IsStylusCaptureWithin
+            || window.AreAnyTouchesCapturedWithin
+            || window.IsKeyboardFocusWithin)
+        {
+            return true;
+        }
+
+        foreach (Window ownedWindow in window.OwnedWindows)
+        {
+            if (IsWindowInteractionActive(ownedWindow))
+                return true;
+        }
+
+        return false;
+    }
+
+    internal static bool ShouldKeepDesktopPromotion(
+        bool pointerInHoverZone,
+        bool pointerOverNotch,
+        bool inputCapturedWithin,
+        bool keyboardFocusWithin,
+        bool ownedWindowInteractionActive)
+    {
+        return pointerInHoverZone
+               || pointerOverNotch
+               || inputCapturedWithin
+               || keyboardFocusWithin
+               || ownedWindowInteractionActive;
     }
 
     private void ScheduleDesktopLayerDemotion()
@@ -70,6 +138,11 @@ public partial class MainWindow
             {
                 _desktopDemotionDelayTimer?.Stop();
                 if (_cleanedUp || !_isDesktopEdgePromoted) return;
+
+                // Interaction may begin again after demotion was scheduled. Check
+                // the live WPF input state so an expanded panel, drag operation, or
+                // text field cannot disappear behind the foreground application.
+                if (IsDesktopNotchInteractionActive()) return;
 
                 DemoteToDesktopLayerWithFade();
             },
@@ -246,6 +319,7 @@ public partial class MainWindow
         _desktopPromotionPending = false;
         _desktopDemotionPending = false;
         _isDesktopEdgePromoted = false;
+        _desktopPointerInHoverZone = false;
         if (NotchContainer != null)
         {
             SetDesktopRevealOpacityImmediate(1);

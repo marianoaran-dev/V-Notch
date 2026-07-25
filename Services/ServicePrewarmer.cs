@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using VNotch.Modules;
+using VNotch.Services.Spotlight;
 
 namespace VNotch.Services;
 
@@ -36,6 +37,7 @@ internal static class ServicePrewarmer
         SafeResolve<IBatteryService>(provider);
         SafeResolve<IUpdateService>(provider);
         SafeResolve<IWeatherService>(provider);
+        SafeResolve<SpotlightSearchService>(provider);
 
         SafeResolve<BluetoothMonitorService>(provider);
         SafeResolve<PrivacyIndicatorService>(provider);
@@ -52,6 +54,15 @@ internal static class ServicePrewarmer
 
     private static void RunBackgroundWarmups(IServiceProvider provider)
     {
+        try
+        {
+            provider.GetService<SpotlightSearchService>()?.WarmupAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            RuntimeLog.Error("PREWARM", ex, "Spotlight app index warmup failed");
+        }
+
         try
         {
             var settings = provider.GetService<ISettingsService>()?.Load();

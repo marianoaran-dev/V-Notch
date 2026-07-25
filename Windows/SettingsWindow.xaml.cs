@@ -30,6 +30,7 @@ public partial class SettingsWindow : Window
     private UpdateInfo? _availableUpdate;
     private bool _isLoadingSettings = true;
     private DispatcherTimer? _livePreviewDebounce;
+    private bool _isSpotlightHotkeyRegistered;
 
     // Liquid Glass UI components
     private LiquidGlassController? _liquidGlass;
@@ -41,7 +42,11 @@ public partial class SettingsWindow : Window
     public event EventHandler<NotchSettings>? SettingsChanged;
     public event EventHandler? AnimatedClosing;
 
-    public SettingsWindow(NotchSettings settings, SettingsService settingsService, BluetoothModule? bluetoothModule = null)
+    public SettingsWindow(
+        NotchSettings settings,
+        SettingsService settingsService,
+        BluetoothModule? bluetoothModule = null,
+        bool isSpotlightHotkeyRegistered = true)
     {
         InitializeComponent();
         AnimationPrimitives.ApplyFpsToTree(this);
@@ -50,6 +55,7 @@ public partial class SettingsWindow : Window
         _originalSettings = settings.Clone();
         _settingsService = settingsService;
         _bluetoothModule = bluetoothModule;
+        _isSpotlightHotkeyRegistered = isSpotlightHotkeyRegistered;
         _updateService = new UpdateService();
 
         InitializeNavigation();
@@ -181,6 +187,10 @@ public partial class SettingsWindow : Window
         SystemNotifyCheck.IsChecked = _settings.ShowSystemNotifications;
         ShelfUnlockCheck.IsChecked = _settings.IsShelfUploadLimitUnlocked;
         CopyShelfClipboardCheck.IsChecked = _settings.CopyShelfFilesToClipboard;
+        EnableSpotlightCheck.IsChecked = _settings.EnableSpotlight;
+        SpotlightHotkeyWarning.Visibility = _settings.EnableSpotlight && !_isSpotlightHotkeyRegistered
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         ShowBatteryCheck.IsChecked = _settings.ShowBatteryIndicator;
 
         LanguageCombo.Items.Clear();
@@ -283,6 +293,7 @@ public partial class SettingsWindow : Window
         TooltipHelper.SetLocalizedTooltip(ShelfUnlockCheck, "tooltip.shelfUnlock");
         TooltipHelper.SetLocalizedTooltip(CopyShelfClipboardCheck, "tooltip.copyShelfClipboard");
         TooltipHelper.SetLocalizedTooltip(HelloGreetingCheck, "tooltip.helloGreeting");
+        TooltipHelper.SetLocalizedTooltip(EnableSpotlightCheck, "settings.enableSpotlight.hint");
         TooltipHelper.SetLocalizedTooltip(EnableWeatherCheck, "tooltip.enableWeather");
         TooltipHelper.SetLocalizedTooltip(GpuRefractionCheck, "tooltip.gpuRefraction");
         TooltipHelper.SetLocalizedTooltip(EnableSpotifyCanvasCheck, "tooltip.spotifyCanvas");
@@ -311,6 +322,9 @@ public partial class SettingsWindow : Window
         PerformanceHeader.Text = Loc.Get("settings.performance");
         DisplayHeader.Text = Loc.Get("settings.display");
         SystemHeader.Text = Loc.Get("settings.system");
+        EnableSpotlightCheck.Content = Loc.Get("settings.enableSpotlight");
+        EnableSpotlightHint.Text = Loc.Get("settings.enableSpotlight.hint");
+        SpotlightHotkeyWarning.Text = Loc.Get("settings.enableSpotlight.conflict");
         SearchingHeader.Text = Loc.Get("settings.searching");
         SearchingEmptyText.Text = Loc.Get("settings.search.noResults");
 
@@ -472,6 +486,14 @@ public partial class SettingsWindow : Window
         DonatePaypalButton.Content = Loc.Get("settings.donating.paypal");
         DonatingBankTitle.Text = Loc.Get("settings.donating.bank");
         DonatingBankHint.Text = Loc.Get("settings.donating.bank.hint");
+    }
+
+    internal void SetSpotlightHotkeyStatus(bool isRegistered)
+    {
+        _isSpotlightHotkeyRegistered = isRegistered;
+        SpotlightHotkeyWarning.Visibility = EnableSpotlightCheck.IsChecked == true && !isRegistered
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void ApplySupplementalLocalization()
@@ -2225,6 +2247,7 @@ public partial class SettingsWindow : Window
         StayBehindWindowsCheck.IsChecked = defaults.StayBehindWindows;
         ShelfUnlockCheck.IsChecked = defaults.IsShelfUploadLimitUnlocked;
         CopyShelfClipboardCheck.IsChecked = defaults.CopyShelfFilesToClipboard;
+        EnableSpotlightCheck.IsChecked = defaults.EnableSpotlight;
         ShowBatteryCheck.IsChecked = defaults.ShowBatteryIndicator;
         _settings.BatteryDeviceId = defaults.BatteryDeviceId;
         HideOnExclusiveFullscreenCheck.IsChecked = defaults.HideOnExclusiveFullscreen;
@@ -2622,6 +2645,7 @@ public partial class SettingsWindow : Window
         _settings.AutoStart = AutoStartCheck.IsChecked ?? false;
         _settings.StayBehindWindows = StayBehindWindowsCheck.IsChecked ?? false;
         _settings.EnableHelloGreeting = HelloGreetingCheck.IsChecked ?? true;
+        _settings.EnableSpotlight = EnableSpotlightCheck.IsChecked ?? true;
         _settings.HideOnExclusiveFullscreen = HideOnExclusiveFullscreenCheck.IsChecked ?? true;
         _settings.HideOnWindowedFullscreen = HideOnWindowedFullscreenCheck.IsChecked ?? true;
         _settings.EnableIdleAutoHide = IdleAutoHideCheck.IsChecked ?? false;

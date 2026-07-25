@@ -4,6 +4,8 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using VNotch.Modules;
 using VNotch.Services;
+using VNotch.Services.Spotlight;
+using VNotch.Services.Spotlight.Providers;
 using VNotch.ViewModels;
 
 namespace VNotch;
@@ -142,6 +144,16 @@ public partial class App : Application
             new DispatcherService(Current.Dispatcher));
         services.AddSingleton<IUpdateService, UpdateService>();
         services.AddSingleton<IWeatherService, WeatherService>();
+        services.AddSingleton<ISpotlightProvider, AppSearchProvider>();
+        services.AddSingleton<ISpotlightProvider, WindowsSearchProvider>();
+        services.AddSingleton<SpotlightSearchService>();
+        services.AddSingleton<SpotlightLauncher>();
+        services.AddSingleton<SpotlightViewModel>();
+        services.AddSingleton(sp => new SpotlightWindow(
+            sp.GetRequiredService<SpotlightViewModel>(),
+            sp.GetRequiredService<SpotlightLauncher>()));
+        services.AddSingleton<Controllers.ISpotlightController>(sp =>
+            new Controllers.SpotlightController(() => sp.GetRequiredService<SpotlightWindow>()));
         // This is the application state owner used by both the running window and unit tests.
         services.AddSingleton<ShellViewModel>();
 
