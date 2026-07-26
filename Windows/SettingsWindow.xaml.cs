@@ -2551,6 +2551,11 @@ public partial class SettingsWindow : Window
 
         squishX.Completed += (s, e) =>
         {
+            // Blank and hide the layered window before destroying it so
+            // capture-based dock animators (MyDockFinder) have nothing
+            // visible to replay as their own closing animation.
+            Opacity = 0;
+            Hide();
             Close();
         };
 
@@ -3830,6 +3835,20 @@ public partial class SettingsWindow : Window
         if (hwnd == IntPtr.Zero) return 1.0;
         uint dpi = Win32Interop.GetDpiForWindow(hwnd);
         return dpi / 96.0;
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        // WS_EX_TOOLWINDOW keeps third-party dock/animation tools (e.g. MyDockFinder)
+        // from applying their own open/close window animations over ours.
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            int exStyle = Win32Interop.GetWindowLong(hwnd, Win32Interop.GWL_EXSTYLE);
+            Win32Interop.SetWindowLong(hwnd, Win32Interop.GWL_EXSTYLE, exStyle | Win32Interop.WS_EX_TOOLWINDOW);
+        }
     }
 
     protected override void OnClosed(EventArgs e)

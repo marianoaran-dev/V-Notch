@@ -151,26 +151,43 @@ public partial class MainWindow
         if (expandedBlur != null && blurOutAnim != null)
             expandedBlur.BeginAnimation(BlurEffect.RadiusProperty, blurOutAnim);
 
+        PlayTimerViewEntrance(durIn, inDelay);
+
+        AnimateClockViewNotchResize(
+            NotchBorder.ActualWidth > 0 ? NotchBorder.ActualWidth : _expandedWidth,
+            NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : _expandedHeight,
+            _clockViewWidth, _clockViewHeight, durIn, inDelay);
+
+        UpdateTimerDisplay();
+    }
+
+    // The clock view "unfolds" out of the notch: the panel drops from the notch
+    // lip while the header falls in, the analog clock springs to size and the
+    // control bar rises from below — three staggered layers.
+    private void PlayTimerViewEntrance(Duration durIn, TimeSpan inDelay)
+    {
+        int fps = VNotch.Services.AnimationConfig.TargetFps;
+
         TimerContent.Visibility = Visibility.Visible;
         TimerContent.BeginAnimation(OpacityProperty, null);
         TimerContent.Opacity = 0;
 
         var timerGroup = new TransformGroup();
-        var timerScale = new ScaleTransform(0.96, 0.96);
-        var timerTranslate = new TranslateTransform(0, 16);
+        var timerScale = new ScaleTransform(0.94, 0.94);
+        var timerTranslate = new TranslateTransform(0, -22);
         timerGroup.Children.Add(timerScale);
         timerGroup.Children.Add(timerTranslate);
         TimerContent.RenderTransform = timerGroup;
-        TimerContent.RenderTransformOrigin = new Point(0.5, 0.5);
+        TimerContent.RenderTransformOrigin = new Point(0.5, 0.0);
 
         var fadeIn = MakeAnim(0, 1, durIn, _easeAppleOut, inDelay);
-        var springSlide = MakeAnim(16, 0, durIn, _easeAppleOut, inDelay);
-        var springScaleX = MakeAnim(0.96, 1, durIn, _easeAppleOut, inDelay);
-        var springScaleY = MakeAnim(0.96, 1, durIn, _easeAppleOut, inDelay);
+        var dropIn = MakeAnim(-22, 0, durIn, _easeExpOut6, inDelay);
+        var growX = MakeAnim(0.94, 1, durIn, _easeAppleOut, inDelay);
+        var growY = MakeAnim(0.94, 1, durIn, _easeAppleOut, inDelay);
         Timeline.SetDesiredFrameRate(fadeIn, fps);
-        Timeline.SetDesiredFrameRate(springSlide, fps);
-        Timeline.SetDesiredFrameRate(springScaleX, fps);
-        Timeline.SetDesiredFrameRate(springScaleY, fps);
+        Timeline.SetDesiredFrameRate(dropIn, fps);
+        Timeline.SetDesiredFrameRate(growX, fps);
+        Timeline.SetDesiredFrameRate(growY, fps);
 
         fadeIn.Completed += (s, ev) =>
         {
@@ -187,16 +204,95 @@ public partial class MainWindow
         TimerContent.UpdateLayout();
 
         TimerContent.BeginAnimation(OpacityProperty, fadeIn);
-        timerTranslate.BeginAnimation(TranslateTransform.YProperty, springSlide);
-        timerScale.BeginAnimation(ScaleTransform.ScaleXProperty, springScaleX);
-        timerScale.BeginAnimation(ScaleTransform.ScaleYProperty, springScaleY);
+        timerTranslate.BeginAnimation(TranslateTransform.YProperty, dropIn);
+        timerScale.BeginAnimation(ScaleTransform.ScaleXProperty, growX);
+        timerScale.BeginAnimation(ScaleTransform.ScaleYProperty, growY);
 
-        AnimateClockViewNotchResize(
-            NotchBorder.ActualWidth > 0 ? NotchBorder.ActualWidth : _expandedWidth,
-            NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : _expandedHeight,
-            _clockViewWidth, _clockViewHeight, durIn, inDelay);
+        PlayClockViewUnfoldIn(inDelay);
+    }
 
-        UpdateTimerDisplay();
+    private void PlayClockViewUnfoldIn(TimeSpan baseDelay)
+    {
+        int fps = VNotch.Services.AnimationConfig.TargetFps;
+
+        // Header (analog clock + calendar) falls in from the notch lip.
+        var headerTranslate = new TranslateTransform(0, -14);
+        ClockViewHeader.RenderTransform = headerTranslate;
+        ClockViewHeader.BeginAnimation(OpacityProperty, null);
+        ClockViewHeader.Opacity = 0;
+
+        var headerDelay = baseDelay + TimeSpan.FromMilliseconds(50);
+        var headerFade = MakeAnim(0, 1, new Duration(TimeSpan.FromMilliseconds(360)), _easeAppleOut, headerDelay);
+        var headerDrop = MakeAnim(-14, 0, new Duration(TimeSpan.FromMilliseconds(470)), _easeExpOut6, headerDelay);
+        Timeline.SetDesiredFrameRate(headerFade, fps);
+        Timeline.SetDesiredFrameRate(headerDrop, fps);
+
+        headerFade.Completed += (_, _) =>
+        {
+            ClockViewHeader.BeginAnimation(OpacityProperty, null);
+            ClockViewHeader.Opacity = 1;
+            if (ReferenceEquals(ClockViewHeader.RenderTransform, headerTranslate))
+                ClockViewHeader.RenderTransform = null;
+        };
+        ClockViewHeader.BeginAnimation(OpacityProperty, headerFade);
+        headerTranslate.BeginAnimation(TranslateTransform.YProperty, headerDrop);
+
+        // Analog clock springs to full size on top of the header drop.
+        var clockScale = new ScaleTransform(0.84, 0.84);
+        ClockViewClock.RenderTransform = clockScale;
+        ClockViewClock.RenderTransformOrigin = new Point(0.5, 0.5);
+
+        var clockDelay = baseDelay + TimeSpan.FromMilliseconds(100);
+        var clockPop = MakeAnim(0.84, 1, new Duration(TimeSpan.FromMilliseconds(600)), _easeSoftSpring, clockDelay);
+        Timeline.SetDesiredFrameRate(clockPop, fps);
+        clockPop.Completed += (_, _) =>
+        {
+            if (ReferenceEquals(ClockViewClock.RenderTransform, clockScale))
+                ClockViewClock.RenderTransform = null;
+        };
+        clockScale.BeginAnimation(ScaleTransform.ScaleXProperty, clockPop);
+        clockScale.BeginAnimation(ScaleTransform.ScaleYProperty, clockPop);
+
+        // Control bar rises to meet the header from below.
+        var barGroup = new TransformGroup();
+        var barScale = new ScaleTransform(0.96, 0.96);
+        var barTranslate = new TranslateTransform(0, 18);
+        barGroup.Children.Add(barScale);
+        barGroup.Children.Add(barTranslate);
+        TimerControlBar.RenderTransform = barGroup;
+        TimerControlBar.RenderTransformOrigin = new Point(0.5, 1.0);
+        TimerControlBar.BeginAnimation(OpacityProperty, null);
+        TimerControlBar.Opacity = 0;
+
+        var barDelay = baseDelay + TimeSpan.FromMilliseconds(140);
+        var barFade = MakeAnim(0, 1, new Duration(TimeSpan.FromMilliseconds(340)), _easeAppleOut, barDelay);
+        var barRise = MakeAnim(18, 0, new Duration(TimeSpan.FromMilliseconds(460)), _easeExpOut6, barDelay);
+        var barGrow = MakeAnim(0.96, 1, new Duration(TimeSpan.FromMilliseconds(460)), _easeAppleOut, barDelay);
+        Timeline.SetDesiredFrameRate(barFade, fps);
+        Timeline.SetDesiredFrameRate(barRise, fps);
+        Timeline.SetDesiredFrameRate(barGrow, fps);
+
+        barFade.Completed += (_, _) =>
+        {
+            TimerControlBar.BeginAnimation(OpacityProperty, null);
+            TimerControlBar.Opacity = 1;
+            if (ReferenceEquals(TimerControlBar.RenderTransform, barGroup))
+                TimerControlBar.RenderTransform = null;
+        };
+        TimerControlBar.BeginAnimation(OpacityProperty, barFade);
+        barTranslate.BeginAnimation(TranslateTransform.YProperty, barRise);
+        barScale.BeginAnimation(ScaleTransform.ScaleXProperty, barGrow);
+        barScale.BeginAnimation(ScaleTransform.ScaleYProperty, barGrow);
+    }
+
+    private void ResetClockViewChildVisuals()
+    {
+        foreach (var el in new FrameworkElement[] { ClockViewHeader, ClockViewClock, TimerControlBar })
+        {
+            el.BeginAnimation(OpacityProperty, null);
+            el.Opacity = 1;
+            el.RenderTransform = null;
+        }
     }
 
     private void SwitchFromSecondaryToTimerView()
