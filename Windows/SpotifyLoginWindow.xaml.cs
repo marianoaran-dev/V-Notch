@@ -1,6 +1,8 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -11,6 +13,9 @@ namespace VNotch;
 
 public partial class SpotifyLoginWindow : Window
 {
+    private const double ShellMarginDip = 18;
+    private const double ShellCornerRadiusDip = 24;
+
     private readonly DispatcherTimer _cookieTimer;
     private bool _cookieCheckInProgress;
     private string? _userDataFolder;
@@ -34,7 +39,79 @@ public partial class SpotifyLoginWindow : Window
         };
         _cookieTimer.Tick += CookieTimer_Tick;
         Loaded += SpotifyLoginWindow_Loaded;
+        SizeChanged += (_, _) => ApplyRoundedWindowRegion();
+        DpiChanged += (_, _) => ApplyRoundedWindowRegion();
     }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        ApplyRoundedWindowRegion();
+    }
+
+    private void ApplyRoundedWindowRegion()
+    {
+        IntPtr hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+            return;
+
+        double widthDip = ActualWidth > 0 ? ActualWidth : Width;
+        double heightDip = ActualHeight > 0 ? ActualHeight : Height;
+        uint dpi = Win32Interop.GetDpiForWindow(hwnd);
+        double dpiScale = dpi > 0 ? dpi / 96.0 : 1.0;
+
+        var regionBounds = CalculateRoundedWindowRegion(widthDip, heightDip, dpiScale);
+        IntPtr region = CreateRoundRectRgn(
+            regionBounds.Left,
+            regionBounds.Top,
+            regionBounds.Right,
+            regionBounds.Bottom,
+            regionBounds.CornerDiameter,
+            regionBounds.CornerDiameter);
+        if (region == IntPtr.Zero)
+            return;
+
+        // SetWindowRgn owns the region after success. On failure we must release it.
+        if (SetWindowRgn(hwnd, region, true) == 0)
+            Win32Interop.DeleteObject(region);
+    }
+
+    internal static RoundedWindowRegion CalculateRoundedWindowRegion(
+        double widthDip,
+        double heightDip,
+        double dpiScale)
+    {
+        dpiScale = dpiScale > 0 && double.IsFinite(dpiScale) ? dpiScale : 1.0;
+
+        int left = (int)Math.Round(ShellMarginDip * dpiScale);
+        int top = left;
+        int right = Math.Max(left + 1,
+            (int)Math.Round((Math.Max(widthDip, ShellMarginDip * 2 + 1) - ShellMarginDip) * dpiScale));
+        int bottom = Math.Max(top + 1,
+            (int)Math.Round((Math.Max(heightDip, ShellMarginDip * 2 + 1) - ShellMarginDip) * dpiScale));
+        int cornerDiameter = Math.Max(1, (int)Math.Round(ShellCornerRadiusDip * 2 * dpiScale));
+
+        return new RoundedWindowRegion(left, top, right, bottom, cornerDiameter);
+    }
+
+    internal readonly record struct RoundedWindowRegion(
+        int Left,
+        int Top,
+        int Right,
+        int Bottom,
+        int CornerDiameter);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRoundRectRgn(
+        int x1,
+        int y1,
+        int x2,
+        int y2,
+        int widthEllipse,
+        int heightEllipse);
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowRgn(IntPtr hwnd, IntPtr region, bool redraw);
 
     private async void SpotifyLoginWindow_Loaded(object sender, RoutedEventArgs e)
     {

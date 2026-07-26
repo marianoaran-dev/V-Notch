@@ -198,7 +198,7 @@ Muốn dùng code mới nhất mà chưa có bản release? Bạn có thể tự
 |----------|------------|
 | **Spotify** | Full control, smart-cropped album art |
 | **Apple Music** | Native Windows app support |
-| **YouTube** | Thumbnail fetching, title parsing, 15s seek |
+| **YouTube** | Thumbnail fetching, title parsing, full-video skip |
 | **TikTok/Reels** | Video title detection, basic playback |
 | **SoundCloud** | Browser session detection |
 | **Generic** | Any app using Windows Media Session |

@@ -2850,14 +2850,21 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private static readonly string[] _navOrder =
+    {
+        "Searching", "Appearance", "Skins", "Behavior", "Devices",
+        "System", "Advanced", "Performance", "Donating", "Updates"
+    };
+
+    private int _navTransitionVersion;
+
     private void NavigateToSection(string section)
     {
         if (section == _activeNav) return;
 
-        if (_navPanels.TryGetValue(_activeNav, out var oldPanel))
-            oldPanel.Visibility = Visibility.Collapsed;
+        string previous = _activeNav;
 
-        if (_navButtons.TryGetValue(_activeNav, out var oldBtn))
+        if (_navButtons.TryGetValue(previous, out var oldBtn))
         {
             oldBtn.Background = _transparentBrush;
             var oldStack = oldBtn.Child as StackPanel;
@@ -2867,9 +2874,6 @@ public partial class SettingsWindow : Window
 
         _activeNav = section;
 
-        if (_navPanels.TryGetValue(section, out var newPanel))
-            newPanel.Visibility = Visibility.Visible;
-
         if (_navButtons.TryGetValue(section, out var newBtn))
         {
             newBtn.Background = (SolidColorBrush)FindResource("NavItemActiveBg");
@@ -2878,16 +2882,61 @@ public partial class SettingsWindow : Window
                 newText.Foreground = _whiteBrush;
         }
 
-        SettingsScrollViewer.ScrollToTop();
+        int version = ++_navTransitionVersion;
+        int direction = Math.Sign(Array.IndexOf(_navOrder, section) - Array.IndexOf(_navOrder, previous));
+        if (direction == 0) direction = 1;
 
-        AnimateActivePanel(section);
+        var (oldCard, oldTranslate) = GetSectionCardParts(previous);
+        _navPanels.TryGetValue(previous, out var oldPanel);
+
+        void RevealIncoming()
+        {
+            if (version != _navTransitionVersion ||
+                !string.Equals(_activeNav, section, StringComparison.Ordinal))
+                return;
+
+            foreach (var kvp in _navPanels)
+                if (kvp.Key != section) kvp.Value.Visibility = Visibility.Collapsed;
+            if (_navPanels.TryGetValue(section, out var newPanel))
+                newPanel.Visibility = Visibility.Visible;
+
+            SettingsScrollViewer.ScrollToTop();
+            AnimateActivePanel(section, direction);
+        }
+
+        if (oldCard == null || oldTranslate == null || VNotch.Services.AnimationConfig.ReduceMotion)
+        {
+            RevealIncoming();
+            return;
+        }
+
+        int fps = VNotch.Services.AnimationConfig.TargetFps;
+        var exitEase = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var exitDur = TimeSpan.FromMilliseconds(130);
+
+        var fadeOut = new DoubleAnimation(oldCard.Opacity, 0, exitDur) { EasingFunction = exitEase };
+        var slideOut = new DoubleAnimation(oldTranslate.Y, -14 * direction, exitDur) { EasingFunction = exitEase };
+        Timeline.SetDesiredFrameRate(fadeOut, fps);
+        Timeline.SetDesiredFrameRate(slideOut, fps);
+
+        fadeOut.Completed += (_, _) =>
+        {
+            oldCard.BeginAnimation(OpacityProperty, null);
+            oldCard.Opacity = 0;
+            oldTranslate.BeginAnimation(TranslateTransform.YProperty, null);
+            oldTranslate.Y = 12;
+            if (oldPanel != null && !string.Equals(previous, _activeNav, StringComparison.Ordinal))
+                oldPanel.Visibility = Visibility.Collapsed;
+            RevealIncoming();
+        };
+
+        oldCard.BeginAnimation(OpacityProperty, fadeOut);
+        oldTranslate.BeginAnimation(TranslateTransform.YProperty, slideOut);
     }
 
-    private void AnimateActivePanel(string section)
+    private (FrameworkElement? Card, TranslateTransform? Translate) GetSectionCardParts(string section)
     {
-        var ease = new ExponentialEase { EasingMode = EasingMode.EaseOut, Exponent = 6 };
-
-        UIElement? card = section switch
+        FrameworkElement? card = section switch
         {
             "Appearance" => AppearanceCard,
             "Searching" => SearchingCard,
@@ -2917,18 +2966,59 @@ public partial class SettingsWindow : Window
             _ => null
         };
 
+        return (card, translate);
+    }
+
+    private static ScaleTransform EnsureCardScale(FrameworkElement card, TranslateTransform translate)
+    {
+        if (card.RenderTransform is TransformGroup existing &&
+            existing.Children.Count > 0 && existing.Children[0] is ScaleTransform s)
+            return s;
+
+        var scale = new ScaleTransform(1, 1);
+        var group = new TransformGroup();
+        group.Children.Add(scale);
+        group.Children.Add(translate);
+        card.RenderTransform = group;
+        card.RenderTransformOrigin = new Point(0.5, 0.5);
+        return scale;
+    }
+
+    private void AnimateActivePanel(string section, int direction = 1)
+    {
+        var (card, translate) = GetSectionCardParts(section);
         if (card == null || translate == null) return;
 
-        card.Opacity = 0;
-        translate.Y = 12;
+        if (VNotch.Services.AnimationConfig.ReduceMotion)
+        {
+            card.BeginAnimation(OpacityProperty, null);
+            card.Opacity = 1;
+            translate.BeginAnimation(TranslateTransform.YProperty, null);
+            translate.Y = 0;
+            return;
+        }
 
-        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(350)) { EasingFunction = ease };
-        Timeline.SetDesiredFrameRate(fade, VNotch.Services.AnimationConfig.TargetFps);
-        var slide = new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(420)) { EasingFunction = ease };
-        Timeline.SetDesiredFrameRate(slide, VNotch.Services.AnimationConfig.TargetFps);
+        int fps = VNotch.Services.AnimationConfig.TargetFps;
+        var ease = new ExponentialEase { EasingMode = EasingMode.EaseOut, Exponent = 6 };
+        var scale = EnsureCardScale(card, translate);
+
+        double fromY = 18 * direction;
+        card.Opacity = 0;
+        translate.Y = fromY;
+        scale.ScaleX = 0.985;
+        scale.ScaleY = 0.985;
+
+        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300)) { EasingFunction = ease };
+        var slide = new DoubleAnimation(fromY, 0, TimeSpan.FromMilliseconds(420)) { EasingFunction = ease };
+        var grow = new DoubleAnimation(0.985, 1, TimeSpan.FromMilliseconds(420)) { EasingFunction = ease };
+        Timeline.SetDesiredFrameRate(fade, fps);
+        Timeline.SetDesiredFrameRate(slide, fps);
+        Timeline.SetDesiredFrameRate(grow, fps);
 
         card.BeginAnimation(OpacityProperty, fade);
         translate.BeginAnimation(TranslateTransform.YProperty, slide);
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
     }
 
     #endregion

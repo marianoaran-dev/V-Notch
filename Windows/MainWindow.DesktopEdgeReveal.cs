@@ -36,10 +36,11 @@ public partial class MainWindow
 
         bool atRevealEdge = _notchManager.HoverService.IsPointInTopEdgeRevealZone(point);
         bool inNotchHoverZone = _notchManager.HoverService.IsPointInHoverZone(point);
+        bool ownedWindowInteractionActive = HasActiveOwnedWindowInteraction();
         _desktopPointerInHoverZone = inNotchHoverZone;
         bool interactionActive = IsDesktopNotchInteractionActive();
 
-        if (atRevealEdge)
+        if (atRevealEdge || ownedWindowInteractionActive)
         {
             CancelScheduledDesktopDemotion();
             PromoteFromDesktopLayer();

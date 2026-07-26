@@ -40,15 +40,25 @@ public sealed class MediaTransportControlService
         try
         {
             var session = _getActiveSession();
-            bool success = false;
             if (session != null)
             {
-                success = await session.TrySkipNextAsync();
+                var controls = TryGetControls(session);
+                if (controls?.IsNextEnabled == true && await session.TrySkipNextAsync())
+                {
+                    return;
+                }
+
+                // Browser videos (e.g. YouTube outside a playlist) register no next-track
+                // handler, so both SMTC skip and the media key are no-ops for them.
+                // Jumping to the end of the timeline finishes the video and lets the
+                // player advance on its own (autoplay / playlist).
+                if (await TrySeekToTimelineEdgeAsync(session, toEnd: true))
+                {
+                    RuntimeLog.Log("MEDIA-CTRL", "Next: skip unsupported, jumped to end of timeline");
+                    return;
+                }
             }
-            if (!success)
-            {
-                SendMediaKey(Win32Interop.VK_MEDIA_NEXT_TRACK);
-            }
+            SendMediaKey(Win32Interop.VK_MEDIA_NEXT_TRACK);
         }
         catch (Exception ex)
         {
@@ -62,20 +72,63 @@ public sealed class MediaTransportControlService
         try
         {
             var session = _getActiveSession();
-            bool success = false;
             if (session != null)
             {
-                success = await session.TrySkipPreviousAsync();
+                var controls = TryGetControls(session);
+                if (controls?.IsPreviousEnabled == true && await session.TrySkipPreviousAsync())
+                {
+                    return;
+                }
+
+                // Same story as NextTrackAsync: with no previous-track handler the only
+                // meaningful "previous" for a browser video is restarting it.
+                if (await TrySeekToTimelineEdgeAsync(session, toEnd: false))
+                {
+                    RuntimeLog.Log("MEDIA-CTRL", "Previous: skip unsupported, restarted timeline");
+                    return;
+                }
             }
-            if (!success)
-            {
-                SendMediaKey(Win32Interop.VK_MEDIA_PREV_TRACK);
-            }
+            SendMediaKey(Win32Interop.VK_MEDIA_PREV_TRACK);
         }
         catch (Exception ex)
         {
             RuntimeLog.Error("MEDIA-CTRL", ex, "PreviousTrack failed");
             SendMediaKey(Win32Interop.VK_MEDIA_PREV_TRACK);
+        }
+    }
+
+    private static GlobalSystemMediaTransportControlsSessionPlaybackControls? TryGetControls(
+        GlobalSystemMediaTransportControlsSession session)
+    {
+        try
+        {
+            return session.GetPlaybackInfo()?.Controls;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static async Task<bool> TrySeekToTimelineEdgeAsync(
+        GlobalSystemMediaTransportControlsSession session, bool toEnd)
+    {
+        try
+        {
+            var timeline = session.GetTimelineProperties();
+            if (timeline == null) return false;
+
+            if (toEnd)
+            {
+                if (timeline.EndTime <= TimeSpan.Zero) return false;
+                return await session.TryChangePlaybackPositionAsync(timeline.EndTime.Ticks);
+            }
+
+            return await session.TryChangePlaybackPositionAsync(timeline.StartTime.Ticks);
+        }
+        catch
+        {
+            return false;
         }
     }
 

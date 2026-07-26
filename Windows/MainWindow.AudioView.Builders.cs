@@ -178,6 +178,65 @@ public partial class MainWindow
         AudioLoadingTranslate.BeginAnimation(TranslateTransform.YProperty, loadingSlide);
         AudioRoot.BeginAnimation(OpacityProperty, contentFade);
         AudioRootTranslate.BeginAnimation(TranslateTransform.YProperty, contentSlide);
+
+        StaggerAudioMixerReveal(contentDelay);
+    }
+
+    private void StaggerAudioMixerReveal(TimeSpan baseDelay)
+    {
+        if (AudioRoot == null) return;
+
+        var targets = new List<FrameworkElement>();
+        foreach (var child in AudioRoot.Children)
+        {
+            if (child is StackPanel rows)
+            {
+                if (rows.Visibility != Visibility.Visible) continue;
+                foreach (var row in rows.Children)
+                    if (row is FrameworkElement rowEl) targets.Add(rowEl);
+            }
+            else if (child is FrameworkElement el)
+            {
+                targets.Add(el);
+            }
+        }
+        if (targets.Count == 0) return;
+
+        int fps = AnimationConfig.TargetFps;
+        var ease = new ExponentialEase { Exponent = 5, EasingMode = EasingMode.EaseOut };
+        var dur = new Duration(TimeSpan.FromMilliseconds(320));
+        var stagger = TimeSpan.FromMilliseconds(38);
+
+        for (int i = 0; i < targets.Count; i++)
+        {
+            var el = targets[i];
+            var delay = baseDelay + TimeSpan.FromTicks(stagger.Ticks * i);
+
+            el.BeginAnimation(OpacityProperty, null);
+            el.Opacity = 0;
+            var translate = new TranslateTransform(0, 10);
+            el.RenderTransform = translate;
+
+            var fade = new DoubleAnimation(0, 1, dur) { BeginTime = delay, EasingFunction = ease };
+            var slide = new DoubleAnimation(10, 0, dur) { BeginTime = delay, EasingFunction = ease };
+            Timeline.SetDesiredFrameRate(fade, fps);
+            Timeline.SetDesiredFrameRate(slide, fps);
+
+            var captured = el;
+            var capturedTranslate = translate;
+            fade.Completed += (_, _) =>
+            {
+                captured.BeginAnimation(OpacityProperty, null);
+                captured.Opacity = 1;
+                // Only detach the transform if the section toggle or a rebuild
+                // has not replaced it in the meantime.
+                if (ReferenceEquals(captured.RenderTransform, capturedTranslate))
+                    captured.RenderTransform = null;
+            };
+
+            el.BeginAnimation(OpacityProperty, fade);
+            translate.BeginAnimation(TranslateTransform.YProperty, slide);
+        }
     }
 
     private static Brush Frozen(string hex)
