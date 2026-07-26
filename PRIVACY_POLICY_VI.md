@@ -91,7 +91,7 @@ Mô phỏng hành vi iOS/macOS, V-Notch có thể hiển thị một chấm màu
 
 ### 3.10 Cắt ảnh bìa thông minh trên thiết bị (ONNX)
 
-Nếu được bật, V-Notch dùng một mô hình nhận diện đối tượng YOLOv8n đi kèm, chạy cục bộ qua ONNX Runtime, để cắt ảnh bìa rộng một cách thông minh (canh giữa khuôn mặt hoặc chủ thể). **Toàn bộ phân tích ảnh chạy hoàn toàn trên thiết bị của bạn. Không có ảnh, đầu vào mô hình, hoặc kết quả nhận diện nào được gửi đi đâu.** Tính năng này không cần kết nối mạng.
+Nếu được bật, V-Notch dùng một mô hình nhận diện đối tượng YOLO11n đi kèm, chạy cục bộ qua ONNX Runtime, để cắt ảnh bìa rộng một cách thông minh (canh giữa khuôn mặt hoặc chủ thể). **Toàn bộ phân tích ảnh chạy hoàn toàn trên thiết bị của bạn. Không có ảnh, đầu vào mô hình, hoặc kết quả nhận diện nào được gửi đi đâu.** Tính năng này không cần kết nối mạng.
 
 ---
 
@@ -178,7 +178,7 @@ Nằm trong thư mục chương trình của ứng dụng, log này ghi lại c�
 
 ### 5.3 Mô hình ONNX tùy chọn
 
-Nếu có, tệp mô hình cắt ảnh thông minh (`yolov8n.onnx`) được lưu cục bộ cùng với ứng dụng và chỉ dùng cho phân tích ảnh trên thiết bị.
+Nếu có, tệp mô hình cắt ảnh thông minh (`yolo11n.onnx`) được lưu cục bộ cùng với ứng dụng và chỉ dùng cho phân tích ảnh trên thiết bị.
 
 Bạn có thể xóa toàn bộ dữ liệu đã lưu bất cứ lúc nào bằng cách xóa thư mục `%APPDATA%\V-Notch\` và thư mục ứng dụng.
 

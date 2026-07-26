@@ -1386,27 +1386,15 @@ public partial class MainWindow
             }
         }
 
-        if (CountdownPlusBtn != null && CountdownPlusBtn.Visibility == Visibility.Visible)
+        if (CountdownStepperCapsule != null && CountdownStepperCapsule.Visibility == Visibility.Visible)
         {
-            double currentOpacity = CountdownPlusBtn.Opacity;
+            double currentOpacity = CountdownStepperCapsule.Opacity;
             if (currentOpacity > 0.01)
             {
-                CountdownPlusBtn.BeginAnimation(OpacityProperty, null);
+                CountdownStepperCapsule.BeginAnimation(OpacityProperty, null);
                 var fadeAnim = MakeAnim(currentOpacity, 0, baseDuration, easing, wave3Delay);
                 Timeline.SetDesiredFrameRate(fadeAnim, fps);
-                CountdownPlusBtn.BeginAnimation(OpacityProperty, fadeAnim);
-            }
-        }
-
-        if (CountdownMinusBtn != null && CountdownMinusBtn.Visibility == Visibility.Visible)
-        {
-            double currentOpacity = CountdownMinusBtn.Opacity;
-            if (currentOpacity > 0.01)
-            {
-                CountdownMinusBtn.BeginAnimation(OpacityProperty, null);
-                var fadeAnim = MakeAnim(currentOpacity, 0, baseDuration, easing, wave3Delay);
-                Timeline.SetDesiredFrameRate(fadeAnim, fps);
-                CountdownMinusBtn.BeginAnimation(OpacityProperty, fadeAnim);
+                CountdownStepperCapsule.BeginAnimation(OpacityProperty, fadeAnim);
             }
         }
     }
@@ -1443,16 +1431,11 @@ public partial class MainWindow
             CountdownResetBtn.Opacity = 1.0;
         }
 
-        if (CountdownPlusBtn != null)
+        if (CountdownStepperCapsule != null)
         {
-            CountdownPlusBtn.BeginAnimation(OpacityProperty, null);
-            CountdownPlusBtn.Opacity = 1.0;
-        }
-
-        if (CountdownMinusBtn != null)
-        {
-            CountdownMinusBtn.BeginAnimation(OpacityProperty, null);
-            CountdownMinusBtn.Opacity = 1.0;
+            CountdownStepperCapsule.BeginAnimation(OpacityProperty, null);
+            // The stepper stays dimmed while a countdown is running.
+            CountdownStepperCapsule.Opacity = _isCountdownRunning ? 0.4 : 1.0;
         }
     }
 

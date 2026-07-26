@@ -1,6 +1,6 @@
+using VNotch.Models;
 using Windows.Storage;
 using Windows.Storage.Search;
-using VNotch.Models;
 
 namespace VNotch.Services.Spotlight.Providers;
 

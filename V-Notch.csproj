@@ -74,7 +74,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Models\yolov8n.onnx" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Models\yolov8n.onnx')" />
+    <None Include="Models\yolo11n.onnx" CopyToOutputDirectory="PreserveNewest" Condition="Exists('Models\yolo11n.onnx')" />
     <None Include="Package.appxmanifest" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

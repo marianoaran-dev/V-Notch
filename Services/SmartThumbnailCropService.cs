@@ -973,7 +973,7 @@ public sealed class SmartThumbnailCropService : IDisposable
     private static string GetModelPath()
     {
         string appDir = AppDomain.CurrentDomain.BaseDirectory;
-        return Path.Combine(appDir, "Models", "yolov8n.onnx");
+        return Path.Combine(appDir, "Models", "yolo11n.onnx");
     }
 
     public void Dispose()

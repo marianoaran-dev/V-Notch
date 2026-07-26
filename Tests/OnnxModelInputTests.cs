@@ -11,7 +11,7 @@ public sealed class OnnxModelInputTests
     [Fact]
     public void SmartCropModel_UsesOptimized416InputAndExpectedOutput()
     {
-        string modelPath = Path.Combine(AppContext.BaseDirectory, "Models", "yolov8n.onnx");
+        string modelPath = Path.Combine(AppContext.BaseDirectory, "Models", "yolo11n.onnx");
         Assert.True(File.Exists(modelPath), $"Model was not copied to {modelPath}");
 
         using var session = new InferenceSession(modelPath);

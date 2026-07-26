@@ -123,7 +123,7 @@ public sealed class LiquidGlassController
     private DxgiCaptureSource? _mag;
     private bool _magReady;
     private int _magFailStreak = 0;
-    
+
     private bool _hideFromCapture;
     private volatile bool _exactBitBltCapture;
     private int _currentDisplayAffinity = -1;
@@ -369,18 +369,18 @@ public sealed class LiquidGlassController
             try { _onGpuFailure?.Invoke(ex); }
             catch { /* fallback must not take down the UI thread */ }
             if (_mag == null)
-        {
-            try 
             {
-                _mag = new DxgiCaptureSource();
-                _magReady = true;
+                try
+                {
+                    _mag = new DxgiCaptureSource();
+                    _magReady = true;
+                }
+                catch (Exception ex)
+                {
+                    RuntimeLog.Log("LIQUIDGLASS", $"DXGI init failed: {ex.Message}");
+                    _magReady = false;
+                }
             }
-            catch (Exception ex)
-            {
-                RuntimeLog.Log("LIQUIDGLASS", $"DXGI init failed: {ex.Message}");
-                _magReady = false;
-            }
-        } 
             if (_onGpuFailure == null)
                 DisposeGpuPresenter();
         }

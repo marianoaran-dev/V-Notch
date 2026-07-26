@@ -1,10 +1,10 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using VNotch.Services;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
 using Vortice.DXGI;
-using VNotch.Services;
 
 namespace VNotch.Controllers;
 
@@ -17,12 +17,12 @@ public sealed class DxgiCaptureSource : IDisposable
     private int _width;
     private int _height;
     private bool _disposed;
-    
+
     public DxgiCaptureSource()
     {
         InitDxgi();
     }
-    
+
     private void InitDxgi()
     {
         D3D11.D3D11CreateDevice(
@@ -32,18 +32,18 @@ public sealed class DxgiCaptureSource : IDisposable
             new[] { FeatureLevel.Level_11_0 },
             out _device,
             out _context).CheckError();
-            
+
         using var dxgiDevice = _device.QueryInterface<IDXGIDevice>();
         using var adapter = dxgiDevice.GetAdapter();
         adapter.EnumOutputs(0, out IDXGIOutput output).CheckError();
         using var output1 = output.QueryInterface<IDXGIOutput1>();
-        
+
         _duplication = output1.DuplicateOutput(dxgiDevice);
-        
+
         var desc = output.Description;
         _width = desc.DesktopCoordinates.Right - desc.DesktopCoordinates.Left;
         _height = desc.DesktopCoordinates.Bottom - desc.DesktopCoordinates.Top;
-        
+
         var texDesc = new Texture2DDescription
         {
             Width = (uint)_width,
@@ -67,7 +67,7 @@ public sealed class DxgiCaptureSource : IDisposable
         {
             var res = _duplication.AcquireNextFrame(0, out var frameInfo, out var desktopResource);
             if (res.Failure) return false;
-            
+
             using (desktopResource)
             {
                 using var tex = desktopResource.QueryInterface<ID3D11Texture2D>();
@@ -97,7 +97,7 @@ public sealed class DxgiCaptureSource : IDisposable
             {
                 _context.Unmap(_stagingTexture!, 0);
             }
-            
+
             return true;
         }
         catch (Exception ex)
@@ -111,7 +111,7 @@ public sealed class DxgiCaptureSource : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        
+
         _duplication?.Dispose();
         _stagingTexture?.Dispose();
         _context?.Dispose();

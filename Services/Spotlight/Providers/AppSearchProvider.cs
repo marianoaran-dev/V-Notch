@@ -1,5 +1,5 @@
-using System.IO;
 using System.Collections;
+using System.IO;
 using System.Runtime.InteropServices;
 using VNotch.Models;
 
@@ -61,10 +61,10 @@ internal sealed class AppSearchProvider : ISpotlightProvider
         try
         {
             foreach (string shortcut in Directory.EnumerateFiles(programs, "*.lnk", new EnumerationOptions
-                     {
-                         RecurseSubdirectories = true,
-                         IgnoreInaccessible = true
-                     }))
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true
+            }))
             {
                 string title = Path.GetFileNameWithoutExtension(shortcut);
                 AddIfMissing(apps, new SpotlightSearchItem(

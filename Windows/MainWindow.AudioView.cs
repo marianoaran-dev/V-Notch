@@ -105,6 +105,7 @@ public partial class MainWindow
     private void SwitchToAudioView()
     {
         if (_isAudioView || _isAnimating) return;
+        CancelTimerEditingInstant();
 
         FrameworkElement outgoing;
         bool fromPrimary = !_isSecondaryView && !_isTimerView;

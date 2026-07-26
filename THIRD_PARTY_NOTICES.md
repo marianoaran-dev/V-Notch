@@ -3,9 +3,9 @@
 V-Notch includes third-party components and assets listed below. Their licenses
 apply to those components and assets.
 
-## YOLOv8n ONNX model
+## YOLO11n ONNX model
 
-`Models/yolov8n.onnx` is YOLOv8 Nano from Ultralytics, obtained from
+`Models/yolo11n.onnx` is YOLO11 Nano from Ultralytics, obtained from
 <https://github.com/ultralytics/assets/releases> or exported with Ultralytics.
 It is subject to Ultralytics AGPL-3.0 licensing unless obtained under an
 Ultralytics Enterprise license. Model replacement/removal path:

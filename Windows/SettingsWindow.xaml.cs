@@ -6,17 +6,16 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using NAudio.CoreAudioApi;
+using VNotch.Controllers;
 using VNotch.Controls;
 using VNotch.Models;
 using VNotch.Modules;
 using VNotch.Services;
-
-using VNotch.Controllers;
-using System.Windows.Interop;
 
 namespace VNotch;
 
@@ -1348,7 +1347,7 @@ public partial class SettingsWindow : Window
         if (_isLoadingSettings || _suppressGlassPresetChange) return;
         if (GlassPresetCombo.SelectedItem is not System.Windows.Controls.ComboBoxItem item) return;
 
-        Models.LiquidGlassConfig preset = null;
+        Models.LiquidGlassConfig? preset = null;
         switch (item.Tag as string)
         {
             case "frosted": preset = FrostedGlassPreset(); break;
@@ -3677,7 +3676,7 @@ public partial class SettingsWindow : Window
 
             ConfigureGpuRefraction();
             ApplyLiquidGlassConfig();
-            
+
             _liquidGlass.Start();
         }
         else
@@ -3769,7 +3768,7 @@ public partial class SettingsWindow : Window
     private void ConfigureGpuRefraction()
     {
         if (_liquidGlass == null) return;
-        
+
         bool useGpu = (_settings.LiquidGlass?.UseGpuRefraction ?? true) && LiquidGlassRefractionEffect.IsAvailable;
         if (!useGpu)
         {

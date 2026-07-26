@@ -91,7 +91,7 @@ To support swipe and double-tap gestures on the notch (next/previous track, open
 
 ### 3.10 On-Device Smart Thumbnail Cropping (ONNX)
 
-If enabled, V-Notch uses a bundled YOLOv8n object-detection model running locally through ONNX Runtime to intelligently crop wide artwork (centering on a face or subject). **All image analysis runs entirely on your device. No image, model input, or detection result is sent anywhere.** This feature requires no network connection.
+If enabled, V-Notch uses a bundled YOLO11n object-detection model running locally through ONNX Runtime to intelligently crop wide artwork (centering on a face or subject). **All image analysis runs entirely on your device. No image, model input, or detection result is sent anywhere.** This feature requires no network connection.
 
 ---
 
@@ -178,7 +178,7 @@ Located in the application's program folder, this log records application events
 
 ### 5.3 Optional ONNX Model
 
-If present, the smart-crop model file (`yolov8n.onnx`) is stored locally alongside the app and is used purely for on-device image analysis.
+If present, the smart-crop model file (`yolo11n.onnx`) is stored locally alongside the app and is used purely for on-device image analysis.
 
 You can remove all stored data at any time by deleting the `%APPDATA%\V-Notch\` folder and the application directory.
 
