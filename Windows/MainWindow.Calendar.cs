@@ -28,6 +28,7 @@ public partial class MainWindow
             EventText = EventText,
             BatterySection = BatterySection,
             SettingsButton = SettingsButton,
+            ExitButton = ExitButton,
             GreetingSection = GreetingSection,
             CalendarGreetingContextBlur = CalendarGreetingContextBlur,
             CalendarWidgetScale = CalendarWidgetScale,

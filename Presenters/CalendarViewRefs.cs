@@ -22,6 +22,7 @@ public sealed class CalendarViewRefs
     public required TextBlock EventText { get; init; }
     public required UIElement BatterySection { get; init; }
     public required UIElement SettingsButton { get; init; }
+    public required UIElement ExitButton { get; init; }
     public required UIElement GreetingSection { get; init; }
     public required BlurEffect CalendarGreetingContextBlur { get; init; }
 

@@ -1911,6 +1911,62 @@ public partial class MainWindow : Window
         AnimateSettingsHover(false);
     }
 
+    private void ExitButton_MouseEnter(object sender, MouseEventArgs e)
+    {
+        ExitButton.CacheMode ??= new System.Windows.Media.BitmapCache(1.5);
+        AnimateExitHover(true);
+    }
+
+    private void ExitButton_MouseLeave(object sender, MouseEventArgs e)
+    {
+        AnimateExitHover(false);
+    }
+
+    private void AnimateExitHover(bool isEnter)
+    {
+        int fps = VNotch.Services.AnimationConfig.TargetFps;
+        var dur = TimeSpan.FromMilliseconds(isEnter ? 360 : 300);
+        var scaleAnim = new DoubleAnimation
+        {
+            To = isEnter ? 1.18 : 1.0,
+            Duration = new Duration(dur),
+            EasingFunction = new BackEase
+            {
+                EasingMode = EasingMode.EaseOut,
+                Amplitude = isEnter ? 0.32 : 0.18
+            }
+        };
+        Timeline.SetDesiredFrameRate(scaleAnim, fps);
+
+        var opacityAnim = new DoubleAnimation
+        {
+            To = isEnter ? 0.95 : 1.0,
+            Duration = new Duration(TimeSpan.FromMilliseconds(180)),
+            EasingFunction = _easeQuadOut
+        };
+        Timeline.SetDesiredFrameRate(opacityAnim, fps);
+
+        var bg = ExitButton.Background as SolidColorBrush;
+        if (bg == null || bg.IsFrozen)
+        {
+            bg = new SolidColorBrush(Colors.Transparent);
+            ExitButton.Background = bg;
+        }
+
+        var bgAnim = new ColorAnimation
+        {
+            To = isEnter ? Color.FromArgb(34, 255, 255, 255) : Colors.Transparent,
+            Duration = new Duration(TimeSpan.FromMilliseconds(isEnter ? 160 : 240)),
+            EasingFunction = _easeQuadOut
+        };
+        Timeline.SetDesiredFrameRate(bgAnim, fps);
+
+        ExitScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleAnim, HandoffBehavior.SnapshotAndReplace);
+        ExitScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnim, HandoffBehavior.SnapshotAndReplace);
+        ExitButton.BeginAnimation(OpacityProperty, opacityAnim, HandoffBehavior.SnapshotAndReplace);
+        bg.BeginAnimation(SolidColorBrush.ColorProperty, bgAnim, HandoffBehavior.SnapshotAndReplace);
+    }
+
     private void AnimateSettingsHover(bool isEnter)
     {
         int fps = VNotch.Services.AnimationConfig.TargetFps;
@@ -2217,8 +2273,13 @@ public partial class MainWindow : Window
 
     private void Exit_Click(object sender, RoutedEventArgs e)
     {
-        CleanupBeforeShutdown();
-        System.Windows.Application.Current.Shutdown();
+        ShutdownApplication();
+    }
+
+    private void ExitButton_Click(object sender, MouseButtonEventArgs e)
+    {
+        ShutdownApplication();
+        e.Handled = true;
     }
 
     private void Restart_Click(object sender, RoutedEventArgs e)
@@ -2254,6 +2315,12 @@ public partial class MainWindow : Window
         PerformCleanup();
     }
 
+    private void ShutdownApplication()
+    {
+        CleanupBeforeShutdown();
+        System.Windows.Application.Current.Shutdown();
+    }
+
     private bool IsPointInteractive(Point windowPt)
     {
         if (System.Windows.Input.Mouse.Captured != null) return true;
@@ -2273,7 +2340,8 @@ public partial class MainWindow : Window
                 (ChargingNotification != null && ReferenceEquals(current, ChargingNotification)) ||
                 (BluetoothNotification != null && ReferenceEquals(current, BluetoothNotification)) ||
                 (BluetoothDisconnectNotification != null && ReferenceEquals(current, BluetoothDisconnectNotification)) ||
-                (UpdateNotificationButton != null && ReferenceEquals(current, UpdateNotificationButton)))
+                (UpdateNotificationButton != null && ReferenceEquals(current, UpdateNotificationButton)) ||
+                (ExitButton != null && ReferenceEquals(current, ExitButton)))
             {
                 return true;
             }

@@ -371,6 +371,7 @@ public sealed class CalendarPresenter : IDisposable
 
         AnimateOpacity(_refs.BatterySection, isFocused ? 0.62 : 1.0, duration, easing);
         AnimateOpacity(_refs.SettingsButton, isFocused ? 0.62 : 1.0, duration, easing);
+        AnimateOpacity(_refs.ExitButton, isFocused ? 0.62 : 1.0, duration, easing);
         AnimateOpacity(_refs.GreetingSection, isFocused ? 0.62 : 1.0, duration, easing);
 
         if (_refs.CalendarGreetingContextBlur != null)
@@ -404,6 +405,7 @@ public sealed class CalendarPresenter : IDisposable
 
         ResetCalendarContextElement(_refs.BatterySection, null);
         ResetCalendarContextElement(_refs.SettingsButton, null);
+        ResetCalendarContextElement(_refs.ExitButton, null);
         ResetCalendarContextElement(_refs.GreetingSection, _refs.CalendarGreetingContextBlur);
     }
 

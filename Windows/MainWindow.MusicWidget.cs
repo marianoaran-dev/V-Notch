@@ -131,6 +131,14 @@ public partial class MainWindow
         fadeOutSettings.Completed += (s, e) => SettingsButton.Visibility = Visibility.Collapsed;
         SettingsButton.BeginAnimation(OpacityProperty, fadeOutSettings);
 
+        var fadeOutExit = MakeAnim(ExitButton.Opacity, 0d, _dur150, _easePowerIn2, null);
+        fadeOutExit.Completed += (s, e) =>
+        {
+            ExitButton.Visibility = Visibility.Collapsed;
+            ExitButton.IsHitTestVisible = false;
+        };
+        ExitButton.BeginAnimation(OpacityProperty, fadeOutExit);
+
         var fadeOutGreeting = MakeAnim(1d, 0d, _dur150, _easePowerIn2, null);
         fadeOutGreeting.Completed += (s, e) => GreetingSection.Visibility = Visibility.Collapsed;
         GreetingSection.BeginAnimation(OpacityProperty, fadeOutGreeting);
@@ -283,6 +291,13 @@ public partial class MainWindow
         SettingsButton.Visibility = Visibility.Visible;
         var fadeInSettings = MakeAnim(0d, 1d, new Duration(TimeSpan.FromMilliseconds(300)), _easePowerOut3, TimeSpan.FromMilliseconds(120));
         SettingsButton.BeginAnimation(OpacityProperty, fadeInSettings);
+
+        ExitButton.BeginAnimation(OpacityProperty, null);
+        ExitButton.Opacity = 0;
+        ExitButton.Visibility = Visibility.Visible;
+        ExitButton.IsHitTestVisible = true;
+        var fadeInExit = MakeAnim(0d, 1d, new Duration(TimeSpan.FromMilliseconds(300)), _easePowerOut3, TimeSpan.FromMilliseconds(120));
+        ExitButton.BeginAnimation(OpacityProperty, fadeInExit);
 
         GreetingSection.BeginAnimation(OpacityProperty, null);
         GreetingSection.Opacity = 0;

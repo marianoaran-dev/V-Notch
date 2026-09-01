@@ -887,6 +887,10 @@ public partial class MainWindow
         SettingsScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
         SettingsScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
         SettingsRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+        ExitButton.BeginAnimation(OpacityProperty, null);
+        ExitTranslate.BeginAnimation(TranslateTransform.YProperty, null);
+        ExitScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        ExitScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
 
         bool showBatterySection = show && _settings.ShowBatteryIndicator;
         double iconTargetY = _settings.EnableDynamicIslandMode ? 5 : 0;
@@ -903,6 +907,14 @@ public partial class MainWindow
             SettingsScale.ScaleX = 0.86;
             SettingsScale.ScaleY = 0.86;
             SettingsRotate.Angle = 20;
+            ExitButton.Visibility = Visibility.Visible;
+            ExitButton.IsHitTestVisible = true;
+            ExitScale.ScaleX = 0.86;
+            ExitScale.ScaleY = 0.86;
+        }
+        else
+        {
+            ExitButton.IsHitTestVisible = false;
         }
 
         var batteryOpacityAnim = new DoubleAnimation
@@ -957,6 +969,33 @@ public partial class MainWindow
             BeginTime = settingsDelay
         };
         Timeline.SetDesiredFrameRate(settingsRotateAnim, animFps);
+
+        var exitOpacityAnim = new DoubleAnimation
+        {
+            To = show ? 1.0 : 0.0,
+            Duration = dur,
+            EasingFunction = easing,
+            BeginTime = settingsDelay
+        };
+        Timeline.SetDesiredFrameRate(exitOpacityAnim, animFps);
+
+        var exitTranslateAnim = new DoubleAnimation
+        {
+            To = show ? iconTargetY : -6,
+            Duration = dur,
+            EasingFunction = settingsEase,
+            BeginTime = settingsDelay
+        };
+        Timeline.SetDesiredFrameRate(exitTranslateAnim, animFps);
+
+        var exitScaleAnim = new DoubleAnimation
+        {
+            To = show ? 1.0 : 0.86,
+            Duration = new Duration(TimeSpan.FromMilliseconds(show ? 460 : 200)),
+            EasingFunction = settingsEase,
+            BeginTime = settingsDelay
+        };
+        Timeline.SetDesiredFrameRate(exitScaleAnim, animFps);
 
         if (_isUpdateAvailable && UpdateNotificationButton != null)
         {
@@ -1038,6 +1077,10 @@ public partial class MainWindow
         SettingsScale.BeginAnimation(ScaleTransform.ScaleXProperty, settingsScaleAnim, HandoffBehavior.SnapshotAndReplace);
         SettingsScale.BeginAnimation(ScaleTransform.ScaleYProperty, settingsScaleAnim, HandoffBehavior.SnapshotAndReplace);
         SettingsRotate.BeginAnimation(RotateTransform.AngleProperty, settingsRotateAnim, HandoffBehavior.SnapshotAndReplace);
+        ExitButton.BeginAnimation(OpacityProperty, exitOpacityAnim, HandoffBehavior.SnapshotAndReplace);
+        ExitTranslate.BeginAnimation(TranslateTransform.YProperty, exitTranslateAnim, HandoffBehavior.SnapshotAndReplace);
+        ExitScale.BeginAnimation(ScaleTransform.ScaleXProperty, exitScaleAnim, HandoffBehavior.SnapshotAndReplace);
+        ExitScale.BeginAnimation(ScaleTransform.ScaleYProperty, exitScaleAnim, HandoffBehavior.SnapshotAndReplace);
     }
 
     #endregion

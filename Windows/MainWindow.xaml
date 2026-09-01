@@ -1372,6 +1372,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <Border x:Name="BatterySection" Grid.Column="0"
@@ -1535,6 +1536,37 @@
                                               UseLayoutRounding="True"/>
                                     </Canvas>
                                 </Viewbox>
+                            </Border>
+
+                            <Border x:Name="ExitButton" Grid.Column="3"
+                                    Width="24" Height="24"
+                                    CornerRadius="12"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    Margin="7,0,0,0"
+                                    ToolTip="Exit V-Notch"
+                                    MouseLeftButtonDown="ExitButton_Click"
+                                    MouseEnter="ExitButton_MouseEnter"
+                                    MouseLeave="ExitButton_MouseLeave"
+                                    RenderTransformOrigin="0.5,0.5"
+                                    Opacity="0"
+                                    Visibility="Visible"
+                                    IsHitTestVisible="True">
+                                <Border.RenderTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform x:Name="ExitScale" ScaleX="1" ScaleY="1"/>
+                                        <TranslateTransform x:Name="ExitTranslate" Y="-4"/>
+                                    </TransformGroup>
+                                </Border.RenderTransform>
+                                <TextBlock Text="&#xE7E8;"
+                                           FontFamily="{StaticResource IconFont}"
+                                           FontSize="16.2"
+                                           Foreground="#CCFFFFFF"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           TextAlignment="Center"
+                                           SnapsToDevicePixels="True"
+                                           UseLayoutRounding="True"/>
                             </Border>
                         </Grid>
 
