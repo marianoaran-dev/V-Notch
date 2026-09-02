@@ -175,6 +175,8 @@ public partial class App : Application
         services.AddSingleton<SpotlightSearchService>();
         services.AddSingleton<SpotlightLauncher>();
         services.AddSingleton<SpotlightViewModel>();
+        services.AddSingleton<IMonitorControlService, DdcMonitorService>();
+        services.AddSingleton<DisplayMonitorsViewModel>();
         services.AddSingleton(sp => new SpotlightWindow(
             sp.GetRequiredService<SpotlightViewModel>(),
             sp.GetRequiredService<SpotlightLauncher>()));

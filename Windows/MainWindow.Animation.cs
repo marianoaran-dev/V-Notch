@@ -15,7 +15,7 @@ public partial class MainWindow
 {
 
     #region Notch Expand/Collapse
-    private enum LastExpandedView { Primary, Secondary, Timer, Audio }
+    private enum LastExpandedView { Primary, Secondary, Timer, Audio, Display }
     private LastExpandedView _lastExpandedViewBeforeCollapse = LastExpandedView.Primary;
 
     private double ExpandedContentRestY => _settings.EnableDynamicIslandMode ? 8.5 : 4;
@@ -80,8 +80,8 @@ public partial class MainWindow
         ExpandedContent.HorizontalAlignment = HorizontalAlignment.Center;
         ExpandedContent.VerticalAlignment = VerticalAlignment.Top;
         ExpandedContent.UseLayoutRounding = true;
-        ExpandedContent.Width = _expandedWidth - 16;
-        ExpandedContent.Height = _expandedHeight - 10;
+        ExpandedContent.Width = _expandedWidth - 24;
+        ExpandedContent.Height = _expandedHeight - 18;
 
         double restY = ExpandedContentRestY;
         ExpandedContent.RenderTransform = restY != 0 ? new TranslateTransform(0, restY) : null;
@@ -511,8 +511,8 @@ public partial class MainWindow
             LyricsCanvasBackground.BeginAnimation(OpacityProperty, null);
             LyricsCanvasBackground.Opacity = 0;
         }
-        ExpandedContent.Width = _expandedWidth - 16;
-        ExpandedContent.Height = _expandedHeight - 10;
+        ExpandedContent.Width = _expandedWidth - 24;
+        ExpandedContent.Height = _expandedHeight - 18;
         // The cold-open layout has not yet run the media sizing callbacks that
         PrepareExpandedContentLayoutForReveal();
 
@@ -556,8 +556,8 @@ public partial class MainWindow
 
                 NotchBorder.Width = _expandedWidth;
                 NotchBorder.Height = _expandedHeight;
-                ExpandedContent.Width = _expandedWidth - 16;
-                ExpandedContent.Height = _expandedHeight - 10;
+                ExpandedContent.Width = _expandedWidth - 24;
+                ExpandedContent.Height = _expandedHeight - 18;
 
                 UpdateLayout();
                 PrepareExpandedContentLayoutForReveal();
@@ -776,6 +776,10 @@ public partial class MainWindow
                 {
                     SwitchToAudioView();
                 }
+                else if (_lastExpandedViewBeforeCollapse == LastExpandedView.Display)
+                {
+                    SwitchToDisplayView();
+                }
             }
         };
 
@@ -810,7 +814,9 @@ public partial class MainWindow
 
         StopMainViewHorizontalStabilizer();
 
-        _lastExpandedViewBeforeCollapse = _isAudioView
+        _lastExpandedViewBeforeCollapse = _isDisplayView
+            ? LastExpandedView.Display
+            : _isAudioView
             ? LastExpandedView.Audio
             : _isTimerView
                 ? LastExpandedView.Timer
@@ -857,6 +863,9 @@ public partial class MainWindow
         bool wasSecondary = _isSecondaryView;
         bool wasTimer = _isTimerView;
         bool wasAudio = _isAudioView;
+        bool wasDisplay = _isDisplayView;
+        if (wasDisplay) CommitDisplayWrites();
+        _isDisplayView = false;
         _isAudioView = false;
         if (wasAudio) { StopAudioPoll(); _audioMixerServiceCached?.ReleaseSessionCache(); }
         if (wasSecondary)
@@ -974,6 +983,21 @@ public partial class MainWindow
             audioBlur.BeginAnimation(BlurEffect.RadiusProperty, audioBlurOut);
         }
 
+        if (wasDisplay)
+        {
+            DisplayContent.BeginAnimation(OpacityProperty, null);
+            var displayFadeOut = MakeAnim(DisplayContent.Opacity, 0, _dur200, _easeQuadIn);
+            displayFadeOut.Completed += (s, e) =>
+            {
+                DisplayContent.BeginAnimation(OpacityProperty, null);
+                DisplayContent.Opacity = 0;
+                DisplayContent.Visibility = Visibility.Collapsed;
+                DisplayContent.RenderTransform = null;
+                DisplayContent.Effect = null;
+            };
+            DisplayContent.BeginAnimation(OpacityProperty, displayFadeOut);
+        }
+
         ExpandedContent.BeginAnimation(OpacityProperty, null);
         MusicCompactContent.BeginAnimation(OpacityProperty, null);
         ResetCalendarScroll();
@@ -1022,6 +1046,11 @@ public partial class MainWindow
                     TimerContent.Opacity = 0;
                 }
             }
+
+            DisplayContent.BeginAnimation(OpacityProperty, null);
+            DisplayContent.Opacity = 0;
+            DisplayContent.Visibility = Visibility.Collapsed;
+            DisplayContent.RenderTransform = null;
         };
 
         var fadeOutBlurAnim = MakeAnim(0, TimeSpan.FromMilliseconds(150), _easeQuadOut);

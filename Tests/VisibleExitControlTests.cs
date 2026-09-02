@@ -35,8 +35,15 @@ public sealed class VisibleExitControlTests
         Assert.Equal("Exit V-Notch", (string?)exitButton.Attribute("ToolTip"));
         Assert.Equal("ExitButton_Click", (string?)exitButton.Attribute("MouseLeftButtonDown"));
 
-        XElement powerIcon = exitButton.Descendants(presentation + "TextBlock").Single();
-        Assert.Equal("\uE7E8", (string?)powerIcon.Attribute("Text"));
+        XElement powerIcon = exitButton.Descendants(presentation + "Path").Single();
+        Assert.Equal("#CCFFFFFF", (string?)powerIcon.Attribute("Fill"));
+        Assert.Contains("M288 32", (string?)powerIcon.Attribute("Data") ?? string.Empty);
+
+        XElement expandedContent = document.Descendants(presentation + "Grid")
+            .Single(element => (string?)element.Attribute(xaml + "Name") == "ExpandedContent");
+        Assert.DoesNotContain(statusBar, expandedContent.DescendantsAndSelf());
+        Assert.Empty(document.Descendants()
+            .Where(element => (string?)element.Attribute(xaml + "Name") == "UtilityActionsPanel"));
     }
 
     [Fact]

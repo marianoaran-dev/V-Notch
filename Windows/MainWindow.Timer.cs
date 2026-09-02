@@ -89,6 +89,11 @@ public partial class MainWindow
     private void TimerIconButton_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        if (_isDisplayView && !_isAnimating)
+        {
+            SwitchFromDisplayToTimerView();
+            return;
+        }
         if (_isAudioView && !_isAnimating)
         {
             SwitchFromAudioToTimerView();
@@ -125,81 +130,28 @@ public partial class MainWindow
             LyricsBlurBackground.Visibility = Visibility.Collapsed;
         }
 
-        UpdateTimerNavIconsState();
-        NavIconsPanel.Visibility = Visibility.Visible;
-        NavIconsPanel.Opacity = 1;
-
-        NavIconsBackground.BeginAnimation(OpacityProperty, null);
-        NavIconsBackground.Opacity = 0;
-        NavIconsBackground.Visibility = Visibility.Visible;
-        var navBgFadeIn = new DoubleAnimation(0, 1, new Duration(TimeSpan.FromMilliseconds(300)))
-        {
-            EasingFunction = _easePowerOut3,
-            BeginTime = TimeSpan.FromMilliseconds(200)
-        };
-        Timeline.SetDesiredFrameRate(navBgFadeIn, VNotch.Services.AnimationConfig.TargetFps);
-        NavIconsBackground.BeginAnimation(OpacityProperty, navBgFadeIn);
-
-        NotchBorder.IsHitTestVisible = false;
-
+        ShowUtilityNavigation();
         ApplyClockViewWindowSize();
-        PrepareClockViewContentSize();
-        RefreshClockView();
 
-        var durOut = new Duration(TimeSpan.FromMilliseconds(170));
-        var durIn = new Duration(TimeSpan.FromMilliseconds(440));
-        var inDelay = TimeSpan.FromMilliseconds(40);
-        int fps = VNotch.Services.AnimationConfig.TargetFps;
+        var fromWidth = NotchBorder.ActualWidth > 0 ? NotchBorder.ActualWidth : _expandedWidth;
+        var fromHeight = NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : _expandedHeight;
 
-        var primaryGroup = new TransformGroup();
-        var primaryScale = new ScaleTransform(1, 1);
-        var primaryTranslate = new TranslateTransform(0, ExpandedContentRestY);
-        primaryGroup.Children.Add(primaryScale);
-        primaryGroup.Children.Add(primaryTranslate);
-        ExpandedContent.RenderTransform = primaryGroup;
-        ExpandedContent.RenderTransformOrigin = new Point(0.5, 0.5);
-
-        var fadeOut = MakeAnim(1, 0, durOut, _easeAppleIn);
-        var slideUp = MakeAnim(ExpandedContentRestY, ExpandedContentRestY - 10, durOut, _easeAppleIn);
-        var scaleDownX = MakeAnim(1, 0.96, durOut, _easeAppleIn);
-        var scaleDownY = MakeAnim(1, 0.96, durOut, _easeAppleIn);
-        Timeline.SetDesiredFrameRate(slideUp, fps);
-        Timeline.SetDesiredFrameRate(scaleDownX, fps);
-        Timeline.SetDesiredFrameRate(scaleDownY, fps);
-
-        bool useContentBlur = _settings.EnableBlurEffects && !IsLiquidGlassEnabled;
-        BlurEffect? expandedBlur = null;
-        DoubleAnimation? blurOutAnim = null;
-        if (useContentBlur)
-        {
-            expandedBlur = ExpandedContent.Effect as BlurEffect ?? new BlurEffect { Radius = 0, RenderingBias = RenderingBias.Performance };
-            ExpandedContent.Effect = expandedBlur;
-            blurOutAnim = MakeAnim(0, 6, durOut, _easeAppleIn);
-        }
-
-        fadeOut.Completed += (s, ev) =>
-        {
-            ExpandedContent.Visibility = Visibility.Collapsed;
-            ExpandedContent.RenderTransform = null;
-            ExpandedContent.Effect = null;
-            if (expandedBlur != null) expandedBlur.Radius = 0;
-        };
-
-        ExpandedContent.BeginAnimation(OpacityProperty, fadeOut);
-        primaryTranslate.BeginAnimation(TranslateTransform.YProperty, slideUp);
-        primaryScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleDownX);
-        primaryScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleDownY);
-        if (expandedBlur != null && blurOutAnim != null)
-            expandedBlur.BeginAnimation(BlurEffect.RadiusProperty, blurOutAnim);
-
-        AnimateClockViewNotchResize(
-            NotchBorder.ActualWidth > 0 ? NotchBorder.ActualWidth : _expandedWidth,
-            NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : _expandedHeight,
-            _clockViewWidth, _clockViewHeight, durIn, inDelay);
-
-        PlayTimerViewEntrance(durIn, inDelay);
-
-        UpdateTimerDisplay();
+        AnimateAudioViewSwap(
+            ExpandedContent,
+            TimerContent,
+            fromWidth,
+            fromHeight,
+            _clockViewWidth,
+            _clockViewHeight,
+            prepIncoming: () =>
+            {
+                PrepareClockViewContentSize();
+                RefreshClockView();
+                ResetClockViewChildVisuals();
+                RestoreTimerContentOpacity();
+                TimerContent.UpdateLayout();
+            },
+            onComplete: UpdateTimerDisplay);
     }
 
     // The clock view "unfolds" out of the notch: the panel drops from the notch
@@ -469,49 +421,6 @@ public partial class MainWindow
         NavIconsBackground.Opacity = 0;
         NavIconsBackground.Visibility = Visibility.Collapsed;
 
-        NotchBorder.IsHitTestVisible = false;
-
-        var durScroll = new Duration(TimeSpan.FromMilliseconds(420));
-        var durIn = new Duration(TimeSpan.FromMilliseconds(440));
-        var inDelay = TimeSpan.FromMilliseconds(30);
-        int fps = VNotch.Services.AnimationConfig.TargetFps;
-
-        var timerTranslate = new TranslateTransform(0, 0);
-        TimerContent.RenderTransform = timerTranslate;
-        TimerContent.RenderTransformOrigin = new Point(0.5, 0.5);
-
-        var timerSlideDown = MakeAnim(0, 40, durScroll, _easeExpOut6);
-        var timerFadeOut = MakeAnim(1, 0, new Duration(TimeSpan.FromMilliseconds(200)), _easeQuadIn);
-        Timeline.SetDesiredFrameRate(timerSlideDown, fps);
-        Timeline.SetDesiredFrameRate(timerFadeOut, fps);
-
-        timerFadeOut.Completed += (s, ev) =>
-        {
-            TimerContent.Visibility = Visibility.Collapsed;
-            TimerContent.RenderTransform = null;
-            TimerContent.BeginAnimation(OpacityProperty, null);
-            TimerContent.Opacity = 0;
-        };
-
-        TimerContent.BeginAnimation(OpacityProperty, timerFadeOut);
-        timerTranslate.BeginAnimation(TranslateTransform.YProperty, timerSlideDown);
-
-        double currentH = NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : _clockViewHeight;
-        double currentWidthExit = NotchBorder.ActualWidth > 0 ? NotchBorder.ActualWidth : _clockViewWidth;
-        AnimateClockViewNotchResize(currentWidthExit, currentH, _expandedWidth, _expandedHeight, durIn, inDelay, RestoreExpandedWindowSize);
-
-        ExpandedContent.Visibility = Visibility.Visible;
-        ExpandedContent.BeginAnimation(OpacityProperty, null);
-        ExpandedContent.Opacity = 0;
-        ExpandedContent.Effect = null;
-        ExpandedContent.Width = _expandedWidth - 16;
-        ExpandedContent.Height = _expandedHeight - 10;
-        ExpandedContent.HorizontalAlignment = HorizontalAlignment.Right;
-        ExpandedContent.UseLayoutRounding = false;
-        ExpandedContent.UpdateLayout();
-
-        PrepareExpandedContentLayoutForReveal();
-
         if (_currentMediaInfo?.Thumbnail != null && _currentMediaInfo.IsAnyMediaPlaying)
         {
             var palette = DynamicIslandColorExtractor.GetDynamicIslandPalette(_currentMediaInfo.Thumbnail);
@@ -528,57 +437,54 @@ public partial class MainWindow
             ProgressBarGradientEnd.Color = darkColor;
         }
 
-        var primaryTranslate = new TranslateTransform(0, ExpandedContentRestY - 16);
-        ExpandedContent.RenderTransform = primaryTranslate;
-        ExpandedContent.RenderTransformOrigin = new Point(0.5, 0.5);
+        var fromWidth = NotchBorder.ActualWidth > 0 ? NotchBorder.ActualWidth : _clockViewWidth;
+        var fromHeight = NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : _clockViewHeight;
 
-        var primarySlideDown = MakeAnim(ExpandedContentRestY - 16, ExpandedContentRestY, durIn, _easeAppleOut, inDelay);
-        var primaryFadeIn = MakeAnim(0, 1, durIn, _easeAppleOut, inDelay);
-        Timeline.SetDesiredFrameRate(primarySlideDown, fps);
-        Timeline.SetDesiredFrameRate(primaryFadeIn, fps);
-
-        primaryFadeIn.Completed += (s, ev) =>
-        {
-            _isAnimating = false;
-            _isScrollSessionLocked = false;
-            NotchBorder.IsHitTestVisible = true;
-            ExpandedContent.Opacity = 1;
-            ExpandedContent.BeginAnimation(OpacityProperty, null);
-            RestoreExpandedContentRestLayout();
-            ResumeSpotifyCanvasLifecycle();
-
-            ShowMediaBackground();
-
-            if (_settings.EnableBlurEffects && !IsLiquidGlassEnabled && _isLyricsActive && !_isSpotifyCanvasMediaOpen && LyricsBlurBackground != null)
+        AnimateAudioViewSwap(
+            TimerContent,
+            ExpandedContent,
+            fromWidth,
+            fromHeight,
+            _expandedWidth,
+            _expandedHeight,
+            prepIncoming: () =>
             {
-                LyricsBlurImage.BeginAnimation(OpacityProperty, null);
-                LyricsBlurImage.Opacity = 1;
-                LyricsBlurBackground.Visibility = Visibility.Visible;
-                LyricsBlurBackground.BeginAnimation(OpacityProperty, null);
-                var lyricsBlurFadeIn = new DoubleAnimation(0, 0.55, new Duration(TimeSpan.FromMilliseconds(250)))
-                {
-                    EasingFunction = new ExponentialEase { Exponent = 4, EasingMode = EasingMode.EaseOut }
-                };
-                System.Windows.Media.Animation.Timeline.SetDesiredFrameRate(lyricsBlurFadeIn, VNotch.Services.AnimationConfig.TargetFps);
-                LyricsBlurBackground.BeginAnimation(OpacityProperty, lyricsBlurFadeIn);
-            }
-        };
+                ExpandedContent.Effect = null;
+                ExpandedContent.Width = _expandedWidth - 24;
+                ExpandedContent.Height = _expandedHeight - 18;
+            },
+            onComplete: () =>
+            {
+                RestoreExpandedWindowSize();
+                ResumeSpotifyCanvasLifecycle();
+                ShowMediaBackground();
+                UpdateProgressSectionLayout();
+                RefreshMediaMarquee();
 
-        ExpandedContent.BeginAnimation(OpacityProperty, primaryFadeIn);
-        primaryTranslate.BeginAnimation(TranslateTransform.YProperty, primarySlideDown);
+                if (_settings.EnableBlurEffects && !IsLiquidGlassEnabled && _isLyricsActive &&
+                    !_isSpotifyCanvasMediaOpen && LyricsBlurBackground != null)
+                {
+                    LyricsBlurImage.BeginAnimation(OpacityProperty, null);
+                    LyricsBlurImage.Opacity = 1;
+                    LyricsBlurBackground.Visibility = Visibility.Visible;
+                    LyricsBlurBackground.BeginAnimation(OpacityProperty, null);
+                    var lyricsBlurFadeIn = new DoubleAnimation(
+                        0, 0.55, new Duration(TimeSpan.FromMilliseconds(250)))
+                    {
+                        EasingFunction = new ExponentialEase
+                        {
+                            Exponent = 4,
+                            EasingMode = EasingMode.EaseOut
+                        }
+                    };
+                    Timeline.SetDesiredFrameRate(lyricsBlurFadeIn, VNotch.Services.AnimationConfig.TargetFps);
+                    LyricsBlurBackground.BeginAnimation(OpacityProperty, lyricsBlurFadeIn);
+                }
+            });
     }
 
     private void UpdateTimerNavIconsState()
-    {
-        HomeIconButton.Opacity = 0.4;
-        FileShelfIconButton.Opacity = 0.4;
-        TimerIconButton.Opacity = 1.0;
-        AudioIconButton.Opacity = 0.4;
-        if (!_isAnimating)
-        {
-            ShelfCountBadge.Visibility = Visibility.Collapsed;
-        }
-    }
+        => UpdateNavIconsActiveState();
 
     private void SwitchFromTimerToSecondaryView()
     {

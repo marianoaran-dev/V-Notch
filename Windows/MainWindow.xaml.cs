@@ -86,6 +86,7 @@ public partial class MainWindow : Window
     private readonly WeatherModule _weatherModule;
     private readonly SystemMonitorModule _systemMonitorModule;
     private readonly IModuleLifecycleManager _moduleHost;
+    private readonly DisplayMonitorsViewModel _displayViewModel;
 
     private readonly NotchStateManager _notchState = new();
 
@@ -229,11 +230,14 @@ public partial class MainWindow : Window
         PrivacyIndicatorModule privacyIndicatorModule,
         WeatherModule weatherModule,
         SystemMonitorModule systemMonitorModule,
-        ISpotlightController spotlightController)
+        ISpotlightController spotlightController,
+        DisplayMonitorsViewModel displayViewModel)
     {
         InitializeComponent();
         Language = System.Windows.Markup.XmlLanguage.GetLanguage(Loc.GetCulture().IetfLanguageTag);
         _viewModel = viewModel;
+        _displayViewModel = displayViewModel;
+        DisplayContent.DataContext = _displayViewModel;
         DataContext = _viewModel;
         _viewModel.IsExpandedCheck = () => _isExpanded || _isMusicExpanded;
         _viewModel.MediaInfoUpdated += ViewModel_MediaInfoUpdated;
@@ -490,7 +494,8 @@ public partial class MainWindow : Window
                 _isTimerView,
                 _isExpanded,
                 isMusicExpanded: false,
-                isAnimating: _isAnimating))
+                isAnimating: _isAnimating,
+                isDisplayView: _isDisplayView))
         {
             RuntimeLog.Log("COLLAPSE-TRIGGER",
                 $"WM_ACTIVATEAPP(deactivate) -> CollapseNotch: isSecondary={_isSecondaryView} isTimer={_isTimerView}");
@@ -507,7 +512,8 @@ public partial class MainWindow : Window
                 _isTimerView,
                 _isExpanded,
                 _isMusicExpanded,
-                _isAnimating))
+                _isAnimating,
+                isDisplayView: _isDisplayView))
         {
             RuntimeLog.Log("COLLAPSE-TRIGGER",
                 $"Deactivated event -> CollapseAll: isExpanded={_isExpanded} isMusicExpanded={_isMusicExpanded} isSecondary={_isSecondaryView} isTimer={_isTimerView}");
@@ -522,10 +528,11 @@ public partial class MainWindow : Window
         bool isTimerView,
         bool isExpanded,
         bool isMusicExpanded,
-        bool isAnimating) =>
+        bool isAnimating,
+        bool isDisplayView = false) =>
         !spotlightMorphSessionActive
         && !spotlightMorphOwnsNotchVisibility
-        && (isSecondaryView || isTimerView)
+        && (isSecondaryView || isTimerView || isDisplayView)
         && (isExpanded || isMusicExpanded)
         && !isAnimating;
 
@@ -547,6 +554,7 @@ public partial class MainWindow : Window
         _notchManager.HoverService.HoverLeave -= HoverService_HoverLeave;
         _notchManager.HoverService.MousePositionChanged -= HoverService_MousePositionChangedForDesktopReveal;
         _viewModel.MediaInfoUpdated -= ViewModel_MediaInfoUpdated;
+        _displayViewModel.Dispose();
         _viewModel.Dispose();
         _batteryModule.BatteryUpdated -= BatteryModule_BatteryUpdated;
         AnimationConfig.ReduceMotionChanged -= OnReduceMotionChanged;
@@ -823,7 +831,9 @@ public partial class MainWindow : Window
 
     private void PositionAtTop()
     {
-        double notchSurfaceWidth = Math.Max(Math.Max(_expandedWidth, _clockViewWidth), _audioViewWidth);
+        double notchSurfaceWidth = Math.Max(
+            Math.Max(Math.Max(_expandedWidth, _clockViewWidth), _audioViewWidth),
+            _displayViewWidth);
         _overlayWindow.PositionAtTop(notchSurfaceWidth, _expandedHeight);
 
         // Initialize the global hover/top-edge bounds at startup as well as after
@@ -2341,7 +2351,8 @@ public partial class MainWindow : Window
                 (BluetoothNotification != null && ReferenceEquals(current, BluetoothNotification)) ||
                 (BluetoothDisconnectNotification != null && ReferenceEquals(current, BluetoothDisconnectNotification)) ||
                 (UpdateNotificationButton != null && ReferenceEquals(current, UpdateNotificationButton)) ||
-                (ExitButton != null && ReferenceEquals(current, ExitButton)))
+                (ExitButton != null && ReferenceEquals(current, ExitButton)) ||
+                (DisplayContent != null && ReferenceEquals(current, DisplayContent)))
             {
                 return true;
             }

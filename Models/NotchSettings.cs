@@ -125,6 +125,11 @@ public class NotchSettings
 
     public bool HasSeenSpotlightIntro { get; set; } = false;
 
+    // Display presets intentionally live with the normal V-Notch settings so Day,
+    // Night and custom monitor snapshots survive restarts without a second store.
+    public Dictionary<string, DisplayPresetSettings> DisplayPresets { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
     [JsonIgnore]
     public bool IsDirty { get; set; } = false;
 
@@ -142,6 +147,11 @@ public class NotchSettings
         }
         clone.LiquidGlass = LiquidGlass?.Clone() ?? new LiquidGlassConfig();
         clone.LiquidGlassCustom = LiquidGlassCustom?.Clone();
+        clone.DisplayPresets = DisplayPresets?.ToDictionary(
+            pair => pair.Key,
+            pair => pair.Value?.Clone() ?? new DisplayPresetSettings(),
+            StringComparer.OrdinalIgnoreCase)
+            ?? new Dictionary<string, DisplayPresetSettings>(StringComparer.OrdinalIgnoreCase);
         return clone;
     }
 }

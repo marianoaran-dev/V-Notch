@@ -319,7 +319,7 @@ public sealed class ClockWidgetPresenter : IDisposable
     private const double _clockViewHeight = 310;
 
     private double ClockViewContentWidth => _clockViewWidth - 40.0;
-    private double ClockViewContentHeight => _clockViewHeight - 48.0;
+    private double ClockViewContentHeight => _clockViewHeight - 64.0;
 
     private bool _clockViewCalendarBuilt;
     private DateTime _clockViewRenderedDate = DateTime.MinValue;

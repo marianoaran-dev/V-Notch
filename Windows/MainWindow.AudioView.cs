@@ -99,6 +99,11 @@ public partial class MainWindow
     private void AudioIconButton_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        if (_isDisplayView && !_isAnimating)
+        {
+            SwitchFromDisplayToAudioView();
+            return;
+        }
         if (_isAudioView || _isAnimating) return;
         SwitchToAudioView();
     }
@@ -212,8 +217,8 @@ public partial class MainWindow
             prepIncoming: () =>
             {
                 ExpandedContent.Effect = null;
-                ExpandedContent.Width = _expandedWidth - 16;
-                ExpandedContent.Height = _expandedHeight - 10;
+                ExpandedContent.Width = _expandedWidth - 24;
+                ExpandedContent.Height = _expandedHeight - 18;
             },
             onComplete: () =>
             {
@@ -316,178 +321,71 @@ public partial class MainWindow
 
         bool outIsAudio = ReferenceEquals(outgoing, AudioContent);
         bool inIsAudio = ReferenceEquals(incoming, AudioContent);
+        bool resetIncomingAutoSize = !inIsAudio
+            && !ReferenceEquals(incoming, ExpandedContent)
+            && notchFromW > notchToW + 0.5;
 
-        if (outIsAudio)
+        // Keep category roots geometrically stable during the view swap. The notch
+        // itself still resizes, but whole-view scale/slide/alignment changes caused
+        // visible shake, especially around Audio and Display.
+        outgoing.BeginAnimation(OpacityProperty, null);
+        outgoing.Opacity = 1;
+        var fadeOut = MakeAnim(1, 0, durOut, _easeAppleIn);
+        Timeline.SetDesiredFrameRate(fadeOut, fps);
+        fadeOut.Completed += (_, _) =>
         {
-
-            var closeGroup = new TransformGroup();
-            var closeScale = new ScaleTransform(1, 1);
-            var closeTranslate = new TranslateTransform(0, 0);
-            closeGroup.Children.Add(closeScale);
-            closeGroup.Children.Add(closeTranslate);
-            outgoing.RenderTransform = closeGroup;
-            outgoing.RenderTransformOrigin = new Point(0.5, 0.4);
-
-            var aFade = MakeAnim(1, 0, durOut, _easeAppleIn);
-            var aSlide = MakeAnim(0, 12, durOut, _easeAppleIn);
-            var aScaleX = MakeAnim(1, 0.97, durOut, _easeAppleIn);
-            var aScaleY = MakeAnim(1, 0.97, durOut, _easeAppleIn);
-            Timeline.SetDesiredFrameRate(aSlide, fps);
-            Timeline.SetDesiredFrameRate(aScaleX, fps);
-            Timeline.SetDesiredFrameRate(aScaleY, fps);
-
-            aFade.Completed += (s, e) =>
-            {
-                outgoing.Visibility = Visibility.Collapsed;
-                outgoing.RenderTransform = null;
-                outgoing.BeginAnimation(OpacityProperty, null);
-                outgoing.Opacity = 1;
-            };
-            outgoing.BeginAnimation(OpacityProperty, aFade);
-            closeTranslate.BeginAnimation(TranslateTransform.YProperty, aSlide);
-            closeScale.BeginAnimation(ScaleTransform.ScaleXProperty, aScaleX);
-            closeScale.BeginAnimation(ScaleTransform.ScaleYProperty, aScaleY);
-        }
-        else
-        {
-            double outRestY = ReferenceEquals(outgoing, ExpandedContent) ? ExpandedContentRestY : 0;
-
-            var outGroup = new TransformGroup();
-            var outScale = new ScaleTransform(1, 1);
-            var outTranslate = new TranslateTransform(0, outRestY);
-            outGroup.Children.Add(outScale);
-            outGroup.Children.Add(outTranslate);
-            outgoing.RenderTransform = outGroup;
-            outgoing.RenderTransformOrigin = new Point(0.5, 0.5);
-
-            var fadeOut = MakeAnim(1, 0, durOut, _easeAppleIn);
-            var slideUp = MakeAnim(outRestY, outRestY - 10, durOut, _easeAppleIn);
-            var scaleDownX = MakeAnim(1, 0.96, durOut, _easeAppleIn);
-            var scaleDownY = MakeAnim(1, 0.96, durOut, _easeAppleIn);
-            Timeline.SetDesiredFrameRate(slideUp, fps);
-            Timeline.SetDesiredFrameRate(scaleDownX, fps);
-            Timeline.SetDesiredFrameRate(scaleDownY, fps);
-
-            bool useContentBlur = _settings.EnableBlurEffects && !IsLiquidGlassEnabled;
-            BlurEffect? outBlur = null;
-            DoubleAnimation? blurOutAnim = null;
-            if (useContentBlur)
-            {
-                outBlur = outgoing.Effect as BlurEffect ?? new BlurEffect { Radius = 0, RenderingBias = RenderingBias.Performance };
-                outgoing.Effect = outBlur;
-                blurOutAnim = MakeAnim(0, 6, durOut, _easeAppleIn);
-            }
-
-            fadeOut.Completed += (s, e) =>
-            {
-                outgoing.Visibility = Visibility.Collapsed;
-                outgoing.RenderTransform = null;
-                outgoing.Effect = null;
-                if (outBlur != null) outBlur.Radius = 0;
-            };
-
-            outgoing.BeginAnimation(OpacityProperty, fadeOut);
-            outTranslate.BeginAnimation(TranslateTransform.YProperty, slideUp);
-            outScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleDownX);
-            outScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleDownY);
-            if (outBlur != null && blurOutAnim != null)
-                outBlur.BeginAnimation(BlurEffect.RadiusProperty, blurOutAnim);
-        }
+            outgoing.Visibility = Visibility.Collapsed;
+            outgoing.BeginAnimation(OpacityProperty, null);
+            outgoing.Opacity = 1;
+        };
+        outgoing.BeginAnimation(OpacityProperty, fadeOut);
 
         prepIncoming?.Invoke();
 
         AnimateClockViewNotchResize(notchFromW, notchFromH, notchToW, notchToH, durIn, inDelay);
 
-        // Do not bitmap-cache transition roots: AudioContent and the other views
-        // update while hidden, and WPF can briefly reuse the previous surface.
+        // Do not bitmap-cache or transform transition roots. Several of these views
+        // update while hidden, and keeping their layout coordinates fixed prevents
+        // a one-frame horizontal/vertical jump as the notch geometry changes.
         incoming.Visibility = Visibility.Visible;
         incoming.BeginAnimation(OpacityProperty, null);
         incoming.Opacity = 0;
 
-        if (inIsAudio)
-        {
-            incoming.RenderTransform = null;
-            incoming.UpdateLayout();
-            var aFadeIn = MakeAnim(0, 1, durIn, _easeAppleOut, inDelay);
-            Timeline.SetDesiredFrameRate(aFadeIn, fps);
-            aFadeIn.Completed += (s, e) =>
-            {
-                _isAnimating = false;
-                _isScrollSessionLocked = false;
-                NotchBorder.IsHitTestVisible = true;
-                incoming.Opacity = 1;
-                incoming.BeginAnimation(OpacityProperty, null);
-                onComplete?.Invoke();
-            };
-            incoming.BeginAnimation(OpacityProperty, aFadeIn);
-        }
+        if (ReferenceEquals(incoming, ExpandedContent))
+            PrepareExpandedContentLayoutForReveal();
         else
+            incoming.UpdateLayout();
+
+        var fadeIn = MakeAnim(0, 1, durIn, _easeAppleOut, inDelay);
+        Timeline.SetDesiredFrameRate(fadeIn, fps);
+        fadeIn.Completed += (_, _) =>
         {
-            bool shrinking = notchFromW > notchToW + 0.5;
-            var savedRounding = incoming.UseLayoutRounding;
-            if (shrinking)
+            _isAnimating = false;
+            _isScrollSessionLocked = false;
+            NotchBorder.IsHitTestVisible = true;
+            incoming.Opacity = 1;
+            incoming.BeginAnimation(OpacityProperty, null);
+
+            if (ReferenceEquals(incoming, ExpandedContent))
             {
-                incoming.HorizontalAlignment = HorizontalAlignment.Right;
-                incoming.UseLayoutRounding = false;
+                RestoreExpandedContentRestLayout();
+            }
+            else if (resetIncomingAutoSize)
+            {
+                // Some shrinking view preparations pin Width/Height temporarily.
+                // Preserve the existing end-state behaviour without changing the
+                // incoming panel's alignment during the animation.
+                incoming.Width = double.NaN;
+                incoming.Height = double.NaN;
                 incoming.UpdateLayout();
             }
 
-            if (ReferenceEquals(incoming, ExpandedContent))
-                PrepareExpandedContentLayoutForReveal();
-            else
-                incoming.UpdateLayout();
+            if (outIsAudio)
+                RestorePrivacyDotVisibility();
 
-            double restY = ReferenceEquals(incoming, ExpandedContent) ? ExpandedContentRestY : 0;
-
-            var inGroup = new TransformGroup();
-            var inScale = new ScaleTransform(0.96, 0.96);
-            var inTranslate = new TranslateTransform(0, 16 + restY);
-            inGroup.Children.Add(inScale);
-            inGroup.Children.Add(inTranslate);
-            incoming.RenderTransform = inGroup;
-            incoming.RenderTransformOrigin = new Point(0.5, 0.5);
-
-            var fadeIn = MakeAnim(0, 1, durIn, _easeAppleOut, inDelay);
-            var springSlide = MakeAnim(16 + restY, restY, durIn, _easeAppleOut, inDelay);
-            var springScaleX = MakeAnim(0.96, 1, durIn, _easeAppleOut, inDelay);
-            var springScaleY = MakeAnim(0.96, 1, durIn, _easeAppleOut, inDelay);
-            Timeline.SetDesiredFrameRate(fadeIn, fps);
-            Timeline.SetDesiredFrameRate(springSlide, fps);
-            Timeline.SetDesiredFrameRate(springScaleX, fps);
-            Timeline.SetDesiredFrameRate(springScaleY, fps);
-
-            fadeIn.Completed += (s, e) =>
-            {
-                _isAnimating = false;
-                _isScrollSessionLocked = false;
-                NotchBorder.IsHitTestVisible = true;
-                incoming.Opacity = 1;
-                incoming.BeginAnimation(OpacityProperty, null);
-                if (ReferenceEquals(incoming, ExpandedContent))
-                    RestoreExpandedContentRestLayout();
-                else
-                    incoming.RenderTransform = null;
-                if (shrinking && !ReferenceEquals(incoming, ExpandedContent))
-                {
-                    incoming.HorizontalAlignment = HorizontalAlignment.Stretch;
-                    incoming.UseLayoutRounding = savedRounding;
-                    // prepIncoming pinned a fixed Width/Height for the shrink; reset to
-                    // auto so the panel fills the notch instead of staying narrow and
-                    // centered (which offsets the media control cluster).
-                    incoming.Width = double.NaN;
-                    incoming.Height = double.NaN;
-                    incoming.UpdateLayout();
-                }
-                if (outIsAudio)
-                    RestorePrivacyDotVisibility();
-                onComplete?.Invoke();
-            };
-
-            incoming.BeginAnimation(OpacityProperty, fadeIn);
-            inTranslate.BeginAnimation(TranslateTransform.YProperty, springSlide);
-            inScale.BeginAnimation(ScaleTransform.ScaleXProperty, springScaleX);
-            inScale.BeginAnimation(ScaleTransform.ScaleYProperty, springScaleY);
-        }
+            onComplete?.Invoke();
+        };
+        incoming.BeginAnimation(OpacityProperty, fadeIn);
     }
 
     private void SettleAudioNotchToFit()

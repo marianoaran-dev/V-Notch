@@ -41,3 +41,10 @@ changed or newly imported asset.
 | YoutubeExplode 6.6.0 | MIT | <https://github.com/Tyrrrz/YoutubeExplode> |
 
 Full license text is provided by each package in its NuGet distribution.
+
+## Font Awesome Free
+
+Selected Font Awesome Free 6.x solid icon SVG path geometry is embedded in the V-Notch UI.
+Copyright Fonticons, Inc. Icons are licensed under CC BY 4.0.
+https://fontawesome.com/
+https://creativecommons.org/licenses/by/4.0/

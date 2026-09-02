@@ -36,6 +36,8 @@ public class NotchStateManager
 
     public bool IsAudioView { get; set; }
 
+    public bool IsDisplayView { get; set; }
+
     public bool CanTransitionTo(NotchState target)
     {
         var current = CurrentState;
