@@ -89,6 +89,11 @@ public partial class MainWindow
     private void TimerIconButton_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        if (_isPiggyBankView && !_isAnimating)
+        {
+            SwitchFromPiggyBankToTimerView();
+            return;
+        }
         if (_isDisplayView && !_isAnimating)
         {
             SwitchFromDisplayToTimerView();

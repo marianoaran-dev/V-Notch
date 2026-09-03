@@ -177,6 +177,7 @@ public partial class App : Application
         services.AddSingleton<SpotlightViewModel>();
         services.AddSingleton<IMonitorControlService, DdcMonitorService>();
         services.AddSingleton<DisplayMonitorsViewModel>();
+        services.AddSingleton<PiggyBankQuotaService>();
         services.AddSingleton(sp => new SpotlightWindow(
             sp.GetRequiredService<SpotlightViewModel>(),
             sp.GetRequiredService<SpotlightLauncher>()));

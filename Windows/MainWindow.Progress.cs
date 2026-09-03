@@ -203,6 +203,20 @@ public partial class MainWindow
         {
             var bounds = NotchWrapper.TransformToAncestor(this)
                 .TransformBounds(new Rect(0, 0, NotchWrapper.ActualWidth, NotchWrapper.ActualHeight));
+
+            // The Piggy Bank panel intentionally extends below the ordinary
+            // expanded utility footprint. Include its live bounds in the
+            // outside-click region so interacting with preview controls does not
+            // immediately collapse the notch.
+            if (_isPiggyBankView && PiggyBankContent != null &&
+                PiggyBankContent.Visibility == Visibility.Visible &&
+                PiggyBankContent.ActualWidth > 0 && PiggyBankContent.ActualHeight > 0)
+            {
+                var piggyBounds = PiggyBankContent.TransformToAncestor(this)
+                    .TransformBounds(new Rect(0, 0, PiggyBankContent.ActualWidth, PiggyBankContent.ActualHeight));
+                bounds.Union(piggyBounds);
+            }
+
             var dpi = VisualTreeHelper.GetDpi(this);
             double padX = 8 * dpi.DpiScaleX;
             double padY = 8 * dpi.DpiScaleY;

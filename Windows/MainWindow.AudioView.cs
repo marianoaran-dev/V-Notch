@@ -99,6 +99,11 @@ public partial class MainWindow
     private void AudioIconButton_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        if (_isPiggyBankView && !_isAnimating)
+        {
+            SwitchFromPiggyBankToAudioView();
+            return;
+        }
         if (_isDisplayView && !_isAnimating)
         {
             SwitchFromDisplayToAudioView();

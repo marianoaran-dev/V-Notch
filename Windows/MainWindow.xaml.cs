@@ -495,7 +495,7 @@ public partial class MainWindow : Window
                 _isExpanded,
                 isMusicExpanded: false,
                 isAnimating: _isAnimating,
-                isDisplayView: _isDisplayView))
+                isDisplayView: _isDisplayView || _isPiggyBankView))
         {
             RuntimeLog.Log("COLLAPSE-TRIGGER",
                 $"WM_ACTIVATEAPP(deactivate) -> CollapseNotch: isSecondary={_isSecondaryView} isTimer={_isTimerView}");
@@ -513,7 +513,7 @@ public partial class MainWindow : Window
                 _isExpanded,
                 _isMusicExpanded,
                 _isAnimating,
-                isDisplayView: _isDisplayView))
+                isDisplayView: _isDisplayView || _isPiggyBankView))
         {
             RuntimeLog.Log("COLLAPSE-TRIGGER",
                 $"Deactivated event -> CollapseAll: isExpanded={_isExpanded} isMusicExpanded={_isMusicExpanded} isSecondary={_isSecondaryView} isTimer={_isTimerView}");
@@ -2336,6 +2336,26 @@ public partial class MainWindow : Window
         if (System.Windows.Input.Mouse.Captured != null) return true;
         if (windowPt.X < 0 || windowPt.Y < 0 || windowPt.X > ActualWidth || windowPt.Y > ActualHeight)
             return false;
+
+        // Piggy Bank grows the utility surface well below the normal expanded
+        // notch height. Keep that explicitly interactive so WM_NCHITTEST does not
+        // pass its preview sliders through to the window underneath.
+        if (_isPiggyBankView && PiggyBankContent != null &&
+            PiggyBankContent.Visibility == Visibility.Visible &&
+            PiggyBankContent.ActualWidth > 0 && PiggyBankContent.ActualHeight > 0)
+        {
+            try
+            {
+                var piggyBounds = PiggyBankContent.TransformToAncestor(this)
+                    .TransformBounds(new Rect(0, 0, PiggyBankContent.ActualWidth, PiggyBankContent.ActualHeight));
+                if (piggyBounds.Contains(windowPt))
+                    return true;
+            }
+            catch (InvalidOperationException)
+            {
+                // Fall through to the normal visual hit test during a layout handoff.
+            }
+        }
 
         HitTestResult result = VisualTreeHelper.HitTest(this, windowPt);
         if (result?.VisualHit == null) return false;

@@ -13,7 +13,7 @@ public partial class MainWindow
 {
     private void NotchWrapper_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (_isAudioView || _isDisplayView) return;
+        if (_isAudioView || _isDisplayView || _isPiggyBankView) return;
 
         if (!_isExpanded && !_isAnimating)
         {
@@ -100,7 +100,11 @@ public partial class MainWindow
     private void HomeIconButton_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
-        if (_isDisplayView && !_isAnimating)
+        if (_isPiggyBankView && !_isAnimating)
+        {
+            SwitchFromPiggyBankToPrimaryView();
+        }
+        else if (_isDisplayView && !_isAnimating)
         {
             SwitchFromDisplayToPrimaryView();
         }
@@ -122,7 +126,11 @@ public partial class MainWindow
     private void FileShelfIconButton_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
-        if (_isDisplayView && !_isAnimating)
+        if (_isPiggyBankView && !_isAnimating)
+        {
+            SwitchFromPiggyBankToSecondaryView();
+        }
+        else if (_isDisplayView && !_isAnimating)
         {
             SwitchFromDisplayToSecondaryView();
         }
@@ -270,16 +278,26 @@ public partial class MainWindow
     private void UpdateNavIconsActiveState()
     {
         var showShelfCountBadge = false;
-        var utilityMode = _isDisplayView || _isAudioView || _isTimerView || _isSecondaryView;
+        var utilityMode = _isPiggyBankView || _isDisplayView || _isAudioView || _isTimerView || _isSecondaryView;
         ApplySharedStatusBarMode(utilityMode);
 
-        if (_isDisplayView)
+        if (_isPiggyBankView)
+        {
+            HomeIconButton.Opacity = 0.4;
+            FileShelfIconButton.Opacity = 0.4;
+            TimerIconButton.Opacity = 0.4;
+            AudioIconButton.Opacity = 0.4;
+            DisplayIconButton.Opacity = 0.4;
+            PiggyBankIconButton.Opacity = 1.0;
+        }
+        else if (_isDisplayView)
         {
             HomeIconButton.Opacity = 0.4;
             FileShelfIconButton.Opacity = 0.4;
             TimerIconButton.Opacity = 0.4;
             AudioIconButton.Opacity = 0.4;
             DisplayIconButton.Opacity = 1.0;
+            PiggyBankIconButton.Opacity = 0.4;
         }
         else if (_isAudioView)
         {
@@ -288,6 +306,7 @@ public partial class MainWindow
             TimerIconButton.Opacity = 0.4;
             AudioIconButton.Opacity = 1.0;
             DisplayIconButton.Opacity = 0.4;
+            PiggyBankIconButton.Opacity = 0.4;
         }
         else if (_isTimerView)
         {
@@ -296,6 +315,7 @@ public partial class MainWindow
             TimerIconButton.Opacity = 1.0;
             AudioIconButton.Opacity = 0.4;
             DisplayIconButton.Opacity = 0.4;
+            PiggyBankIconButton.Opacity = 0.4;
         }
         else if (_isSecondaryView)
         {
@@ -304,6 +324,7 @@ public partial class MainWindow
             TimerIconButton.Opacity = 0.4;
             AudioIconButton.Opacity = 0.4;
             DisplayIconButton.Opacity = 0.4;
+            PiggyBankIconButton.Opacity = 0.4;
             showShelfCountBadge = ShelfUnlockBanner.Visibility != Visibility.Visible;
         }
         else
@@ -313,6 +334,7 @@ public partial class MainWindow
             TimerIconButton.Opacity = 0.4;
             AudioIconButton.Opacity = 0.4;
             DisplayIconButton.Opacity = 0.4;
+            PiggyBankIconButton.Opacity = 0.4;
         }
 
         if (!_isAnimating)

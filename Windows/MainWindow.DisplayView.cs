@@ -32,6 +32,11 @@ public partial class MainWindow
     private void DisplayIconButton_Click(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
+        if (_isPiggyBankView && !_isAnimating)
+        {
+            SwitchFromPiggyBankToDisplayView();
+            return;
+        }
         if (_isDisplayView || _isAnimating) return;
         SwitchToDisplayView();
     }

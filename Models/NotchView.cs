@@ -7,5 +7,6 @@ public enum NotchView
     Secondary,
     Timer,
     AudioMixer,
-    DisplayMonitors
+    DisplayMonitors,
+    PiggyBank
 }

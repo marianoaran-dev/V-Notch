@@ -38,6 +38,8 @@ public class NotchStateManager
 
     public bool IsDisplayView { get; set; }
 
+    public bool IsPiggyBankView { get; set; }
+
     public bool CanTransitionTo(NotchState target)
     {
         var current = CurrentState;

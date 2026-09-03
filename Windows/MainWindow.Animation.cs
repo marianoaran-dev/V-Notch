@@ -15,7 +15,7 @@ public partial class MainWindow
 {
 
     #region Notch Expand/Collapse
-    private enum LastExpandedView { Primary, Secondary, Timer, Audio, Display }
+    private enum LastExpandedView { Primary, Secondary, Timer, Audio, Display, PiggyBank }
     private LastExpandedView _lastExpandedViewBeforeCollapse = LastExpandedView.Primary;
 
     private double ExpandedContentRestY => _settings.EnableDynamicIslandMode ? 8.5 : 4;
@@ -762,7 +762,7 @@ public partial class MainWindow
             CollapsedContent.Visibility = Visibility.Collapsed;
             MusicCompactContent.Visibility = Visibility.Collapsed;
 
-            if (_settings.ReopenLastViewOnExpand && !_isSecondaryView && !_isTimerView && !_isAudioView)
+            if (_settings.ReopenLastViewOnExpand && !_isSecondaryView && !_isTimerView && !_isAudioView && !_isPiggyBankView)
             {
                 if (_lastExpandedViewBeforeCollapse == LastExpandedView.Secondary)
                 {
@@ -779,6 +779,10 @@ public partial class MainWindow
                 else if (_lastExpandedViewBeforeCollapse == LastExpandedView.Display)
                 {
                     SwitchToDisplayView();
+                }
+                else if (_lastExpandedViewBeforeCollapse == LastExpandedView.PiggyBank)
+                {
+                    SwitchToPiggyBankView();
                 }
             }
         };
@@ -814,7 +818,9 @@ public partial class MainWindow
 
         StopMainViewHorizontalStabilizer();
 
-        _lastExpandedViewBeforeCollapse = _isDisplayView
+        _lastExpandedViewBeforeCollapse = _isPiggyBankView
+            ? LastExpandedView.PiggyBank
+            : _isDisplayView
             ? LastExpandedView.Display
             : _isAudioView
             ? LastExpandedView.Audio
@@ -864,10 +870,17 @@ public partial class MainWindow
         bool wasTimer = _isTimerView;
         bool wasAudio = _isAudioView;
         bool wasDisplay = _isDisplayView;
+        bool wasPiggyBank = _isPiggyBankView;
         if (wasDisplay) CommitDisplayWrites();
         _isDisplayView = false;
         _isAudioView = false;
+        _isPiggyBankView = false;
         if (wasAudio) { StopAudioPoll(); _audioMixerServiceCached?.ReleaseSessionCache(); }
+        if (wasPiggyBank)
+        {
+            StopPiggyClock();
+            _piggyRefreshCancellation?.Cancel();
+        }
         if (wasSecondary)
         {
             if (IsCameraPreviewLifecycleActive)
@@ -996,6 +1009,21 @@ public partial class MainWindow
                 DisplayContent.Effect = null;
             };
             DisplayContent.BeginAnimation(OpacityProperty, displayFadeOut);
+        }
+
+        if (wasPiggyBank)
+        {
+            PiggyBankContent.BeginAnimation(OpacityProperty, null);
+            var piggyFadeOut = MakeAnim(PiggyBankContent.Opacity, 0, _dur200, _easeQuadIn);
+            piggyFadeOut.Completed += (s, e) =>
+            {
+                PiggyBankContent.BeginAnimation(OpacityProperty, null);
+                PiggyBankContent.Opacity = 0;
+                PiggyBankContent.Visibility = Visibility.Collapsed;
+                PiggyBankContent.RenderTransform = null;
+                PiggyBankContent.Effect = null;
+            };
+            PiggyBankContent.BeginAnimation(OpacityProperty, piggyFadeOut);
         }
 
         ExpandedContent.BeginAnimation(OpacityProperty, null);

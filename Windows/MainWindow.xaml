@@ -122,6 +122,69 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="PiggyPreviewSlider" TargetType="Slider">
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Height="16" Background="Transparent">
+                            <Border Height="3"
+                                    VerticalAlignment="Center"
+                                    Background="#2CFFFFFF"
+                                    CornerRadius="1.5"/>
+                            <Track x:Name="PART_Track"
+                                   Orientation="Horizontal"
+                                   IsDirectionReversed="False">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
+                                                  Focusable="False"
+                                                  IsTabStop="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="3"
+                                                        VerticalAlignment="Center"
+                                                        Background="#72FFFFFF"
+                                                        CornerRadius="1.5"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
+                                                  Focusable="False"
+                                                  IsTabStop="False"
+                                                  Background="Transparent">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="12" Height="12">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="#F2FFFFFF">
+                                                    <Ellipse.Effect>
+                                                        <DropShadowEffect Color="Black"
+                                                                          BlurRadius="5"
+                                                                          ShadowDepth="1"
+                                                                          Opacity="0.45"/>
+                                                    </Ellipse.Effect>
+                                                </Ellipse>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <DropShadowEffect x:Key="NotchShadow"
                           Color="#000000"
                           ShadowDepth="4"
@@ -630,7 +693,7 @@
                             Margin="8,-2,0,0" Panel.ZIndex="199"
                             Background="Transparent"
                             CornerRadius="12,12,10,10"
-                            Width="144" Height="34"
+                            Width="170" Height="34"
                             Opacity="0"
                             Visibility="Collapsed"
                             MouseLeftButtonDown="NavIconsPanel_MouseLeftButtonDown"/>
@@ -716,6 +779,7 @@
                                     Width="22" Height="22"
                                     Background="Transparent"
                                     Cursor="Hand"
+                                    Margin="0,0,4,0"
                                     Opacity="0.4"
                                     MouseLeftButtonDown="DisplayIconButton_Click">
                                 <Border.Effect>
@@ -726,6 +790,21 @@
                                     <Path Data="M64 0C28.7 0 0 28.7 0 64L0 352c0 35.3 28.7 64 64 64l176 0-10.7 32L160 448c-17.7 0-32 14.3-32 32s14.3 32 32 32l256 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-69.3 0L336 416l176 0c35.3 0 64-28.7 64-64l0-288c0-35.3-28.7-64-64-64L64 0zM512 64l0 224L64 288 64 64l448 0z"
                                           Fill="White"/>
                                 </Viewbox>
+                            </Border>
+                            <Border x:Name="PiggyBankIconButton"
+                                    Width="22" Height="22"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    Opacity="0.4"
+                                    MouseLeftButtonDown="PiggyBankIconButton_Click">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="0" Opacity="0.9"/>
+                                </Border.Effect>
+                                <Image Source="/Assets/codex-piggy-brand.png"
+                                       Width="15" Height="15"
+                                       Stretch="Uniform"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
                             </Border>
                         </StackPanel>
                     </Grid>
@@ -3576,6 +3655,20 @@
                             </ItemsControl>
                         </ScrollViewer>
                     </Grid>
+
+                    <Grid x:Name="PiggyBankContent"
+                          Opacity="0"
+                          Visibility="Collapsed"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Top"
+                          Margin="12,36,12,10"
+                          Background="Transparent"
+                          MouseLeftButtonDown="SecondaryContent_Click"
+                          UseLayoutRounding="True"
+                          SnapsToDevicePixels="True"
+                          TextOptions.TextFormattingMode="Ideal"
+                          TextOptions.TextRenderingMode="Grayscale"
+                          TextOptions.TextHintingMode="Animated"/>
 
                     <Grid x:Name="AudioContent"
                           Opacity="0"
