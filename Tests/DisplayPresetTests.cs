@@ -62,6 +62,40 @@ public sealed class DisplayPresetTests
     }
 
     [Fact]
+    public async Task RapidPresetApply_CoalescesPendingWritesToLatestPreset()
+    {
+        using var monitorService = new FakeMonitorControlService(
+            Monitor("DISPLAY1:0", 80, 46));
+        using var viewModel = new DisplayMonitorsViewModel(
+            monitorService,
+            new FakeDispatcherService());
+
+        await viewModel.RefreshAsync();
+
+        var firstPreset = new Dictionary<string, DisplayPresetMonitorSettings>
+        {
+            ["DISPLAY1:0"] = new() { Brightness = 70, Contrast = 50 }
+        };
+        var latestPreset = new Dictionary<string, DisplayPresetMonitorSettings>
+        {
+            ["DISPLAY1:0"] = new() { Brightness = 42, Contrast = 33 }
+        };
+
+        Assert.True(viewModel.ApplyPresetValues(firstPreset));
+        Assert.True(viewModel.ApplyPresetValues(latestPreset));
+        await viewModel.CommitPendingWritesAsync();
+
+        Assert.Equal(42, viewModel.Monitors[0].Brightness);
+        Assert.Equal(33, viewModel.Monitors[0].Contrast);
+        Assert.Equal(2, monitorService.Writes.Count);
+        Assert.Contains(monitorService.Writes, write =>
+            write.MonitorId == "DISPLAY1:0" && write.Control == MonitorControlKind.Brightness && write.Percentage == 42);
+        Assert.Contains(monitorService.Writes, write =>
+            write.MonitorId == "DISPLAY1:0" && write.Control == MonitorControlKind.Contrast && write.Percentage == 33);
+        Assert.DoesNotContain(monitorService.Writes, write => write.Percentage is 70 or 50);
+    }
+
+    [Fact]
     public async Task PresetCapture_SnapshotsCurrentPerMonitorValues()
     {
         using var monitorService = new FakeMonitorControlService(
