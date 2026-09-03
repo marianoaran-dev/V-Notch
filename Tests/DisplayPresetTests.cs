@@ -96,6 +96,30 @@ public sealed class DisplayPresetTests
     }
 
     [Fact]
+    public async Task Refresh_FlushesPendingWritesBeforeReadingMonitorState()
+    {
+        using var monitorService = new FakeMonitorControlService(
+            Monitor("DISPLAY1:0", 80, 46));
+        using var viewModel = new DisplayMonitorsViewModel(
+            monitorService,
+            new FakeDispatcherService());
+
+        await viewModel.RefreshAsync();
+        monitorService.Events.Clear();
+
+        var preset = new Dictionary<string, DisplayPresetMonitorSettings>
+        {
+            ["DISPLAY1:0"] = new() { Brightness = 42, Contrast = 33 }
+        };
+
+        Assert.True(viewModel.ApplyPresetValues(preset));
+        await viewModel.RefreshAsync();
+
+        Assert.Equal("Enumerate", monitorService.Events[^1]);
+        Assert.Equal(2, monitorService.Events.Count(entry => entry.StartsWith("Write:", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public async Task PresetCapture_SnapshotsCurrentPerMonitorValues()
     {
         using var monitorService = new FakeMonitorControlService(
@@ -132,12 +156,16 @@ public sealed class DisplayPresetTests
         private readonly IReadOnlyList<PhysicalMonitorSnapshot> _monitors;
 
         public List<MonitorWriteRequest> Writes { get; } = new();
+        public List<string> Events { get; } = new();
 
         public FakeMonitorControlService(params PhysicalMonitorSnapshot[] monitors)
             => _monitors = monitors;
 
         public Task<IReadOnlyList<PhysicalMonitorSnapshot>> EnumerateAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(_monitors);
+        {
+            Events.Add("Enumerate");
+            return Task.FromResult(_monitors);
+        }
 
         public Task<MonitorWriteResult> SetValueAsync(
             PhysicalMonitorSnapshot monitor,
@@ -146,6 +174,7 @@ public sealed class DisplayPresetTests
             CancellationToken cancellationToken = default)
         {
             Writes.Add(new MonitorWriteRequest(monitor.Id, control, percentage));
+            Events.Add($"Write:{monitor.Id}:{control}:{percentage:0}");
             return Task.FromResult(MonitorWriteResult.Success());
         }
 

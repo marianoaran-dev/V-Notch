@@ -134,6 +134,24 @@ public sealed class DisplayMonitorsViewModel : ObservableObject, IDisposable
     {
         try
         {
+            // A manual refresh should observe the values the user just selected,
+            // not race the scheduler's short debounce window and read stale DDC
+            // state immediately before a pending write reaches the monitor.
+            await _writeScheduler.FlushAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception ex)
+        {
+            RuntimeLog.Warn(
+                "DISPLAY-DDC",
+                $"Pending display write could not be committed before refresh: {ex.Message}");
+        }
+
+        try
+        {
             var monitors = await _monitorService.EnumerateAsync(_lifetime.Token).ConfigureAwait(false);
             Publish(generation, monitors, null);
         }

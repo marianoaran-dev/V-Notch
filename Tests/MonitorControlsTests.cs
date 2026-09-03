@@ -171,6 +171,29 @@ public sealed class MonitorControlsTests
     }
 
     [Fact]
+    public async Task WriteScheduler_FlushWaitsForTimerStartedInFlightWrite()
+    {
+        var writeStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseWrite = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var scheduler = new MonitorWriteScheduler(
+            async _ =>
+            {
+                writeStarted.TrySetResult(true);
+                await releaseWrite.Task;
+            },
+            TimeSpan.FromMilliseconds(20));
+
+        scheduler.Queue(new MonitorWriteRequest("A", MonitorControlKind.Brightness, 62));
+        await writeStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        var overlappingFlush = scheduler.FlushAsync();
+
+        Assert.False(overlappingFlush.IsCompleted);
+        releaseWrite.TrySetResult(true);
+        await overlappingFlush;
+    }
+
+    [Fact]
     public void DisplayView_IsPartOfShellViewContract()
     {
         Assert.True(Enum.IsDefined(NotchView.DisplayMonitors));

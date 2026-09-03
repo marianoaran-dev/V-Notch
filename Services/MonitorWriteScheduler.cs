@@ -9,6 +9,7 @@ public sealed class MonitorWriteScheduler : IDisposable
 {
     private readonly object _gate = new();
     private readonly Dictionary<(string MonitorId, MonitorControlKind Control), MonitorWriteRequest> _pending = new();
+    private readonly HashSet<Task> _inFlightFlushes = new();
     private readonly Func<MonitorWriteRequest, Task> _writer;
     private readonly TimeSpan _delay;
     private readonly Timer _timer;
@@ -44,16 +45,61 @@ public sealed class MonitorWriteScheduler : IDisposable
 
     public Task FlushAsync()
     {
-        MonitorWriteRequest[] batch;
+        MonitorWriteRequest[]? batch = null;
+        TaskCompletionSource<bool>? batchCompletion = null;
+        Task[] waits;
         lock (_gate)
         {
-            if (_disposed || _pending.Count == 0) return Task.CompletedTask;
-            batch = _pending.Values.ToArray();
-            _pending.Clear();
-            _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            if (_disposed) return Task.CompletedTask;
+
+            var active = _inFlightFlushes.ToArray();
+            if (_pending.Count > 0)
+            {
+                batch = _pending.Values.ToArray();
+                _pending.Clear();
+                _timer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+
+                batchCompletion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _inFlightFlushes.Add(batchCompletion.Task);
+                waits = active.Append(batchCompletion.Task).ToArray();
+            }
+            else
+            {
+                waits = active;
+            }
         }
 
-        return Task.WhenAll(batch.Select(_writer));
+        if (batchCompletion != null)
+            _ = RunBatchAsync(batch!, batchCompletion);
+
+        return waits.Length switch
+        {
+            0 => Task.CompletedTask,
+            1 => waits[0],
+            _ => Task.WhenAll(waits)
+        };
+    }
+
+    private async Task RunBatchAsync(
+        MonitorWriteRequest[] batch,
+        TaskCompletionSource<bool> completion)
+    {
+        try
+        {
+            await Task.WhenAll(batch.Select(_writer)).ConfigureAwait(false);
+            completion.TrySetResult(true);
+        }
+        catch (Exception ex)
+        {
+            completion.TrySetException(ex);
+        }
+        finally
+        {
+            lock (_gate)
+            {
+                _inFlightFlushes.Remove(completion.Task);
+            }
+        }
     }
 
     private void OnTimer(object? state)
