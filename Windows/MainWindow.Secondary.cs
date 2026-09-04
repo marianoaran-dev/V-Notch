@@ -541,13 +541,13 @@ public partial class MainWindow
 
         bool sizeChanged = _shelfUsesSmallItems != useSmallSize;
         _shelfUsesSmallItems = useSmallSize;
-        _shelfRowCount = useSmallSize ? 2 : 1;
+        _shelfRowCount = useSmallSize ? 4 : 2;
         _shelfCellWidth = useSmallSize ? 56 : 66;
         _shelfCellHeight = useSmallSize ? 56 : 82;
 
         int columnCount = fileCount == 0 ? 0 : (fileCount + _shelfRowCount - 1) / _shelfRowCount;
         ShelfItemsContainer.Width = columnCount * _shelfCellWidth;
-        ShelfItemsContainer.Height = useSmallSize ? 112 : 82;
+        ShelfItemsContainer.Height = _shelfRowCount * _shelfCellHeight;
 
         RealizeShelfViewport(forceFullRebuild || sizeChanged);
     }

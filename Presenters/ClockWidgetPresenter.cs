@@ -531,7 +531,10 @@ public sealed class ClockWidgetPresenter : IDisposable
         double dpiScale = VisualTreeHelper.GetDpi(_refs.Window).DpiScaleX;
         if (dpiScale <= 0) dpiScale = 1.0;
 
-        double windowHeightDip = notchHeightDip + 80;
+        // Leave enough transparent host space below the expanded notch for the
+        // floating launcher, including its shadow/selected-state footprint.
+        // The launcher sits ~20 DIP below the notch and is 66 DIP tall.
+        double windowHeightDip = notchHeightDip + 120;
         _refs.Window.Height = windowHeightDip;
         _host.WindowHeight = (int)Math.Round(windowHeightDip * dpiScale);
 

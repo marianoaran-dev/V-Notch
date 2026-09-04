@@ -12,6 +12,7 @@ public sealed class DisplayPresetTests
     public void NotchSettingsClone_DeepCopiesDisplayPresets()
     {
         var settings = new NotchSettings();
+        settings.DisplayLinkedMonitorIds.Add("DISPLAY1:0");
         settings.DisplayPresets["day"] = new DisplayPresetSettings
         {
             Name = "Day",
@@ -23,9 +24,44 @@ public sealed class DisplayPresetTests
 
         var clone = settings.Clone();
         clone.DisplayPresets["day"].Monitors["DISPLAY1:0"].Brightness = 22;
+        clone.DisplayLinkedMonitorIds.Add("DISPLAY2:0");
 
         Assert.Equal(80, settings.DisplayPresets["day"].Monitors["DISPLAY1:0"].Brightness);
         Assert.Equal(22, clone.DisplayPresets["day"].Monitors["DISPLAY1:0"].Brightness);
+        Assert.Single(settings.DisplayLinkedMonitorIds);
+        Assert.Equal(2, clone.DisplayLinkedMonitorIds.Count);
+    }
+
+    [Fact]
+    public async Task LinkState_RestoresAcrossRefreshAndPublishesDurableSnapshot()
+    {
+        using var monitorService = new FakeMonitorControlService(
+            Monitor("DISPLAY1:0", 80, 46),
+            Monitor("DISPLAY2:0", 75, 44));
+        using var viewModel = new DisplayMonitorsViewModel(
+            monitorService,
+            new FakeDispatcherService());
+
+        viewModel.LoadLinkState(
+            allMonitorsLinked: true,
+            linkedMonitorIds: new[] { "DISPLAY2:0" });
+
+        await viewModel.RefreshAsync();
+        Assert.True(viewModel.IsAllMonitorsLinked);
+        Assert.False(viewModel.Monitors[0].IsLinkEnabled);
+        Assert.True(viewModel.Monitors[1].IsLinkEnabled);
+
+        (bool All, IReadOnlyCollection<string> Ids)? published = null;
+        viewModel.LinkStateChanged += (all, ids) => published = (all, ids);
+        viewModel.SetMonitorLink(viewModel.Monitors[0], true);
+
+        Assert.NotNull(published);
+        Assert.True(published!.Value.All);
+        Assert.Contains("DISPLAY1:0", published.Value.Ids);
+        Assert.Contains("DISPLAY2:0", published.Value.Ids);
+
+        await viewModel.RefreshAsync();
+        Assert.All(viewModel.Monitors, row => Assert.True(row.IsLinkEnabled));
     }
 
     [Fact]
@@ -120,6 +156,48 @@ public sealed class DisplayPresetTests
     }
 
     [Fact]
+    public async Task Refresh_TimesOutHungEnumerationWithoutSpawningRetryFanout()
+    {
+        using var monitorService = new HangingEnumerateMonitorControlService();
+        using var viewModel = new DisplayMonitorsViewModel(
+            monitorService,
+            new FakeDispatcherService(),
+            TimeSpan.FromMilliseconds(35));
+
+        await viewModel.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.False(viewModel.IsLoading);
+        Assert.Contains("timed out", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+
+        await viewModel.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.Equal(1, monitorService.EnumerateCalls);
+    }
+
+    [Fact]
+    public async Task Refresh_TimesOutHungPendingWriteAndRemainsResponsive()
+    {
+        using var monitorService = new HangingWriteMonitorControlService(Monitor("DISPLAY1:0", 80, 46));
+        using var viewModel = new DisplayMonitorsViewModel(
+            monitorService,
+            new FakeDispatcherService(),
+            TimeSpan.FromMilliseconds(35));
+
+        await viewModel.RefreshAsync();
+        var preset = new Dictionary<string, DisplayPresetMonitorSettings>
+        {
+            ["DISPLAY1:0"] = new() { Brightness = 42, Contrast = 33 }
+        };
+        Assert.True(viewModel.ApplyPresetValues(preset));
+
+        await viewModel.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.False(viewModel.IsLoading);
+        Assert.Contains("recovering", viewModel.StatusText, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, monitorService.WriteCalls);
+
+        await viewModel.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(1));
+        Assert.Equal(2, monitorService.WriteCalls);
+    }
+
+    [Fact]
     public async Task PresetCapture_SnapshotsCurrentPerMonitorValues()
     {
         using var monitorService = new FakeMonitorControlService(
@@ -140,6 +218,7 @@ public sealed class DisplayPresetTests
         Assert.Equal(75, captured["DISPLAY2:0"].Brightness);
         Assert.Equal(49, captured["DISPLAY2:0"].Contrast);
     }
+
 
     private static PhysicalMonitorSnapshot Monitor(string id, double brightness, double contrast) =>
         new(
@@ -176,6 +255,56 @@ public sealed class DisplayPresetTests
             Writes.Add(new MonitorWriteRequest(monitor.Id, control, percentage));
             Events.Add($"Write:{monitor.Id}:{control}:{percentage:0}");
             return Task.FromResult(MonitorWriteResult.Success());
+        }
+
+        public void Dispose() { }
+    }
+
+    private sealed class HangingEnumerateMonitorControlService : IMonitorControlService
+    {
+        private readonly TaskCompletionSource<IReadOnlyList<PhysicalMonitorSnapshot>> _never =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int EnumerateCalls { get; private set; }
+
+        public Task<IReadOnlyList<PhysicalMonitorSnapshot>> EnumerateAsync(CancellationToken cancellationToken = default)
+        {
+            EnumerateCalls++;
+            return _never.Task;
+        }
+
+        public Task<MonitorWriteResult> SetValueAsync(
+            PhysicalMonitorSnapshot monitor,
+            MonitorControlKind control,
+            double percentage,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(MonitorWriteResult.Success());
+
+        public void Dispose() { }
+    }
+
+    private sealed class HangingWriteMonitorControlService : IMonitorControlService
+    {
+        private readonly IReadOnlyList<PhysicalMonitorSnapshot> _monitors;
+        private readonly TaskCompletionSource<MonitorWriteResult> _never =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int WriteCalls { get; private set; }
+
+        public HangingWriteMonitorControlService(params PhysicalMonitorSnapshot[] monitors)
+            => _monitors = monitors;
+
+        public Task<IReadOnlyList<PhysicalMonitorSnapshot>> EnumerateAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(_monitors);
+
+        public Task<MonitorWriteResult> SetValueAsync(
+            PhysicalMonitorSnapshot monitor,
+            MonitorControlKind control,
+            double percentage,
+            CancellationToken cancellationToken = default)
+        {
+            WriteCalls++;
+            return _never.Task;
         }
 
         public void Dispose() { }

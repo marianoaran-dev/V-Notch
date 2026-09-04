@@ -12,10 +12,10 @@ public class NotchSettings
 
     public string LastRunVersion { get; set; } = "";
 
-    public int Width { get; set; } = 230;
+    public int Width { get; set; } = 420;
     public int DynamicIslandWidth { get; set; } = 220;
     public int DynamicIslandHeight { get; set; } = 40;
-    public int Height { get; set; } = 34;
+    public int Height { get; set; } = 52;
     public int CornerRadius { get; set; } = 8;
     public double Opacity { get; set; } = 1.0;
     public double MediaBlurBrightnessBoost { get; set; } = 2.0;
@@ -25,6 +25,9 @@ public class NotchSettings
     public int AnimationFps { get; set; } = 240;
 
     public int MonitorIndex { get; set; } = 0;
+
+    public double SettingsWindowWidth { get; set; } = 860;
+    public double SettingsWindowHeight { get; set; } = 620;
 
     public string CameraDeviceId { get; set; } = "";
     public string VisualizerAudioDeviceId { get; set; } = "";
@@ -37,6 +40,7 @@ public class NotchSettings
     public bool EnableAnimations { get; set; } = true;
     public bool DisableMouseLeaveAutoClose { get; set; } = true;
     public bool ReopenLastViewOnExpand { get; set; } = false;
+    public string LastExpandedLauncherDestination { get; set; } = "Home";
 
     public double AnimationSpeed { get; set; } = 2.0;
     public bool EnableBounceEffect { get; set; } = true;
@@ -77,6 +81,33 @@ public class NotchSettings
 
     public bool ShowMusicNotifications { get; set; } = true;
     public bool ShowSystemNotifications { get; set; } = true;
+
+    // Piggy Bank alert preferences live in the normal settings file so they
+    // survive app restarts, rebuilds and future V-Notch iterations.
+    public bool EnablePiggyNotifications { get; set; } = true;
+    public bool PiggyUsageAlertsEnabled { get; set; } = true;
+    public bool PiggyAlertAt50 { get; set; } = true;
+    public bool PiggyAlertAt25 { get; set; } = true;
+    public bool PiggyAlertAt10 { get; set; } = true;
+    public bool PiggyCustomAlertEnabled { get; set; } = true;
+    public int PiggyCustomAlertPercent { get; set; } = 60;
+    public bool PiggyBankedResetExpiryAlerts { get; set; } = true;
+    public int PiggyBankedResetReminderHours { get; set; } = 48;
+    public bool PiggyNotificationSound { get; set; } = true;
+
+    // Persist alert de-duplication state as well, otherwise restarting the app
+    // while a quota remains below a threshold would repeat the same alert.
+    public string PiggyFiveHourAlertCycleKey { get; set; } = "";
+    public List<int> PiggyFiveHourAlertedThresholds { get; set; } = new();
+    public string PiggyWeeklyAlertCycleKey { get; set; } = "";
+    public List<int> PiggyWeeklyAlertedThresholds { get; set; } = new();
+    public List<string> PiggyBankedResetAlertedKeys { get; set; } = new();
+
+    // Last authoritative reset-credit details. When Codex temporarily returns a
+    // null reset-credit field, Piggy Bank can keep showing the still-valid cached
+    // reset entries instead of making them disappear between refreshes/restarts.
+    public List<PiggyBankedReset> PiggyCachedBankedResets { get; set; } = new();
+    public int PiggyCachedBankedResetCount { get; set; } = 0;
 
     public bool ShowBatteryIndicator { get; set; } = true;
     public int NotificationDuration { get; set; } = 5000;
@@ -130,6 +161,9 @@ public class NotchSettings
     public Dictionary<string, DisplayPresetSettings> DisplayPresets { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    public bool DisplayAllMonitorsLinked { get; set; } = false;
+    public List<string> DisplayLinkedMonitorIds { get; set; } = new();
+
     [JsonIgnore]
     public bool IsDirty { get; set; } = false;
 
@@ -152,6 +186,11 @@ public class NotchSettings
             pair => pair.Value?.Clone() ?? new DisplayPresetSettings(),
             StringComparer.OrdinalIgnoreCase)
             ?? new Dictionary<string, DisplayPresetSettings>(StringComparer.OrdinalIgnoreCase);
+        clone.DisplayLinkedMonitorIds = DisplayLinkedMonitorIds?.ToList() ?? new List<string>();
+        clone.PiggyFiveHourAlertedThresholds = PiggyFiveHourAlertedThresholds?.ToList() ?? new List<int>();
+        clone.PiggyWeeklyAlertedThresholds = PiggyWeeklyAlertedThresholds?.ToList() ?? new List<int>();
+        clone.PiggyBankedResetAlertedKeys = PiggyBankedResetAlertedKeys?.ToList() ?? new List<string>();
+        clone.PiggyCachedBankedResets = PiggyCachedBankedResets?.ToList() ?? new List<PiggyBankedReset>();
         return clone;
     }
 }

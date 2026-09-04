@@ -288,14 +288,15 @@ public partial class MainWindow
 
         SettingsButton.BeginAnimation(OpacityProperty, null);
         SettingsButton.Opacity = 0;
-        SettingsButton.Visibility = Visibility.Visible;
+        SettingsButton.Visibility = Visibility.Collapsed;
+        SettingsButton.IsHitTestVisible = false;
         var fadeInSettings = MakeAnim(0d, 1d, new Duration(TimeSpan.FromMilliseconds(300)), _easePowerOut3, TimeSpan.FromMilliseconds(120));
         SettingsButton.BeginAnimation(OpacityProperty, fadeInSettings);
 
         ExitButton.BeginAnimation(OpacityProperty, null);
         ExitButton.Opacity = 0;
-        ExitButton.Visibility = Visibility.Visible;
-        ExitButton.IsHitTestVisible = true;
+        ExitButton.Visibility = Visibility.Collapsed;
+        ExitButton.IsHitTestVisible = false;
         var fadeInExit = MakeAnim(0d, 1d, new Duration(TimeSpan.FromMilliseconds(300)), _easePowerOut3, TimeSpan.FromMilliseconds(120));
         ExitButton.BeginAnimation(OpacityProperty, fadeInExit);
 

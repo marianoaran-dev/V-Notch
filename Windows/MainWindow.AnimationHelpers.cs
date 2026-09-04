@@ -652,20 +652,23 @@ public partial class MainWindow
         UpdateMediaBackgroundFootprint();
     }
 
+    internal const double FloatingControlsIdleMinWidth = 340;
+    internal const double FloatingControlsIdleMinHeight = 52;
+
     private double GetCollapsedWidth()
     {
-        double width = _settings.EnableDynamicIslandMode
-            ? _settings.DynamicIslandWidth
-            : _settings.Width;
+        if (_settings.EnableDynamicIslandMode)
+            return Math.Max(100, _settings.DynamicIslandWidth);
 
-        return width;
+        return Math.Max(FloatingControlsIdleMinWidth, _settings.Width);
     }
 
     private double GetCollapsedHeight()
     {
-        return _settings.EnableDynamicIslandMode
-            ? _settings.DynamicIslandHeight
-            : _settings.Height;
+        if (_settings.EnableDynamicIslandMode)
+            return Math.Max(24, _settings.DynamicIslandHeight);
+
+        return Math.Max(FloatingControlsIdleMinHeight, _settings.Height);
     }
 
     private double GetCollapsedCornerRadius()
@@ -903,12 +906,13 @@ public partial class MainWindow
             UpdateNavIconsActiveState();
             if (_isSecondaryView)
                 NavIconsBackground.Visibility = Visibility.Visible;
-            SettingsButton.Visibility = Visibility.Visible;
+            SettingsButton.Visibility = Visibility.Collapsed;
+            SettingsButton.IsHitTestVisible = false;
             SettingsScale.ScaleX = 0.86;
             SettingsScale.ScaleY = 0.86;
             SettingsRotate.Angle = 20;
-            ExitButton.Visibility = Visibility.Visible;
-            ExitButton.IsHitTestVisible = true;
+            ExitButton.Visibility = Visibility.Collapsed;
+            ExitButton.IsHitTestVisible = false;
             ExitScale.ScaleX = 0.86;
             ExitScale.ScaleY = 0.86;
         }
@@ -999,6 +1003,15 @@ public partial class MainWindow
 
         if (_isUpdateAvailable && UpdateNotificationButton != null)
         {
+            if (show)
+            {
+                UpdateNotificationButton.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                UpdateNotificationButton.Visibility = Visibility.Collapsed;
+            }
+
             var updateOpacityAnim = new DoubleAnimation
             {
                 To = show ? 1.0 : 0.0,

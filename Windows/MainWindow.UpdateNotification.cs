@@ -68,71 +68,22 @@ public partial class MainWindow
             return;
         }
 
-        int visibilityGeneration = ++_updateVisibilityGeneration;
-        bool wasVisible = UpdateNotificationButton.Visibility == Visibility.Visible;
-
-        // A visible button may actually be halfway through a stale fade-out.
-        // Remove that clock before restoring its visible base state.
+        // Update availability remains tracked and the Settings > Updates page can
+        // still install it, but the notch itself no longer renders an update icon
+        // in any panel.
+        ++_updateVisibilityGeneration;
+        HideUpdateInlineTooltip();
+        StopUpdatePulseAnimation();
         UpdateNotificationButton.BeginAnimation(OpacityProperty, null);
         UpdateNotificationTranslate.BeginAnimation(TranslateTransform.YProperty, null);
-        UpdateNotificationButton.Visibility = Visibility.Visible;
-        UpdateNotificationButton.IsHitTestVisible = true;
-        UpdateNotificationButton.Tag = Loc.Get("update.version", _availableUpdate?.Version?.ToString() ?? "-");
-        UpdateNotificationButton.Cursor = Cursors.Hand;
-        UpdateNotificationButton.Opacity = 1.0;
-        UpdateNotificationTranslate.Y = 0;
+        UpdateNotificationButton.Visibility = Visibility.Collapsed;
+        UpdateNotificationButton.IsHitTestVisible = false;
+        UpdateNotificationButton.Opacity = 0;
+        UpdateNotificationTranslate.Y = -4;
+        UpdateNotificationButton.Tag = Loc.Get("update.version", _availableUpdate.Version?.ToString() ?? "-");
         SetUpdateInlineTooltipContent(
-            Loc.Get("update.version", _availableUpdate?.Version?.ToString() ?? "-"),
+            Loc.Get("update.version", _availableUpdate.Version?.ToString() ?? "-"),
             Loc.Get("update.clickToInstall"));
-
-        if (wasVisible)
-        {
-            if (!_isUpdateInstalling)
-            {
-                StartUpdatePulseAnimation();
-            }
-            return;
-        }
-
-        UpdateIconBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
-        UpdateIconBrush.Color = Color.FromRgb(48, 209, 88);
-
-        var fadeIn = new DoubleAnimation
-        {
-            From = 0,
-            To = 1.0,
-            Duration = TimeSpan.FromMilliseconds(400),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-
-        var slideIn = new DoubleAnimation
-        {
-            From = -4,
-            To = 0,
-            Duration = TimeSpan.FromMilliseconds(400),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-
-        fadeIn.Completed += (s, e) =>
-        {
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (visibilityGeneration != _updateVisibilityGeneration ||
-                    !_isUpdateAvailable ||
-                    _isUpdateInstalling ||
-                    UpdateNotificationButton.Visibility != Visibility.Visible)
-                {
-                    return;
-                }
-
-                StartUpdatePulseAnimation();
-            }), DispatcherPriority.Render);
-        };
-
-        System.Windows.Media.Animation.Timeline.SetDesiredFrameRate(fadeIn, VNotch.Services.AnimationConfig.TargetFps);
-        UpdateNotificationButton.BeginAnimation(OpacityProperty, fadeIn);
-        System.Windows.Media.Animation.Timeline.SetDesiredFrameRate(slideIn, VNotch.Services.AnimationConfig.TargetFps);
-        UpdateNotificationTranslate.BeginAnimation(TranslateTransform.YProperty, slideIn);
     }
 
     private void HideUpdateNotification()

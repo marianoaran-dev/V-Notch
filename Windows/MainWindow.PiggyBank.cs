@@ -16,12 +16,11 @@ namespace VNotch;
 public partial class MainWindow
 {
     private const double PiggyBankViewWidth = 650;
-    private const double PiggyBankBaseHeight = 372;
+    private const double PiggyBankBaseHeight = 342;
     private const double PiggyLiquidMaxHeight = 158;
 
     private double _piggyBankViewHeight = PiggyBankBaseHeight;
     private bool _piggyBankBuilt;
-    private bool _piggySettingPreviewValues;
     private PiggyBankSnapshot? _piggyBankSnapshot;
     private PiggyBankQuotaService? _piggyBankQuotaServiceCached;
     private CancellationTokenSource? _piggyRefreshCancellation;
@@ -36,10 +35,6 @@ public partial class MainWindow
     private TextBlock? _piggyWeekResetText;
     private StackPanel? _piggyWeekDayBlocks;
     private WrapPanel? _piggyBankedResetPanel;
-    private Slider? _piggyFivePreviewSlider;
-    private Slider? _piggyWeekPreviewSlider;
-    private TextBlock? _piggyFivePreviewValue;
-    private TextBlock? _piggyWeekPreviewValue;
     private PiggyQuotaVisual? _piggyFiveVisual;
     private PiggyQuotaVisual? _piggyWeekVisual;
 
@@ -204,7 +199,7 @@ public partial class MainWindow
             fromWidth,
             fromHeight,
             _expandedWidth,
-            _expandedHeight,
+            SecondaryViewHeight,
             prepIncoming: () =>
             {
                 EnableKeyboardInput();
@@ -214,7 +209,7 @@ public partial class MainWindow
             {
                 SecondaryContent.Width = double.NaN;
                 SecondaryContent.UpdateLayout();
-                RestoreExpandedWindowSize();
+                ResizeHostWindowHeight(SecondaryViewHeight);
                 ResetCameraSectionLayoutInstant();
             });
     }
@@ -339,7 +334,6 @@ public partial class MainWindow
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(190) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(46) });
         PiggyBankContent.Children.Add(root);
 
         root.Children.Add(BuildPiggyHeader());
@@ -353,13 +347,16 @@ public partial class MainWindow
 
         var five = BuildQuotaSection("5H QUOTA", showWeeklyDayBlocks: false, out _piggyFiveVisual, out _piggyFivePercentText,
             out _piggyFiveResetText, out _);
+        five.Margin = new Thickness(18, 0, 10, 0);
         Grid.SetColumn(five, 0);
         quotaGrid.Children.Add(five);
 
         var week = BuildQuotaSection("WEEKLY QUOTA", showWeeklyDayBlocks: true, out _piggyWeekVisual, out _piggyWeekPercentText,
             out _piggyWeekRemainingText, out _piggyWeekResetText);
         _piggyWeekRemainingText.FontSize = 14;
-        _piggyWeekResetText.FontSize = 12.5;
+        _piggyWeekResetText.FontSize = _piggyFiveResetText.FontSize;
+        _piggyWeekResetText.FontWeight = _piggyFiveResetText.FontWeight;
+        _piggyWeekResetText.Foreground = _piggyFiveResetText.Foreground;
         Grid.SetColumn(week, 2);
         quotaGrid.Children.Add(week);
 
@@ -367,11 +364,10 @@ public partial class MainWindow
         Grid.SetRow(banked, 2);
         root.Children.Add(banked);
 
-        var preview = BuildPiggyPreviewSection();
-        Grid.SetRow(preview, 3);
-        root.Children.Add(preview);
-
-        SetPiggyEmptyState();
+        if (_piggyBankSnapshot is { } snapshot)
+            ApplyPiggySnapshot(snapshot, animateLiquids: false);
+        else
+            SetPiggyEmptyState();
     }
 
     private FrameworkElement BuildPiggyHeader()
@@ -409,32 +405,93 @@ public partial class MainWindow
         Grid.SetColumn(_piggyStatusText, 1);
         grid.Children.Add(_piggyStatusText);
 
-        var refresh = new Border
+        var actions = new StackPanel
         {
-            Width = 26,
-            Height = 26,
-            CornerRadius = new CornerRadius(13),
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var alerts = CreatePiggyBellActionButton("Piggy Bank alerts");
+        alerts.Margin = new Thickness(0, 0, 7, 0);
+        alerts.MouseLeftButtonDown += PiggyAlerts_MouseLeftButtonDown;
+        actions.Children.Add(alerts);
+
+        var refresh = CreatePiggyHeaderActionButton("\uE72C", "Refresh Piggy Bank");
+        refresh.MouseLeftButtonDown += PiggyRefresh_MouseLeftButtonDown;
+        actions.Children.Add(refresh);
+
+        Grid.SetColumn(actions, 2);
+        grid.Children.Add(actions);
+        return grid;
+    }
+
+    private Border CreatePiggyHeaderActionButton(string glyph, string tooltip)
+    {
+        var button = new Border
+        {
+            Width = 28,
+            Height = 28,
+            CornerRadius = new CornerRadius(14),
             Background = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255)),
             BorderBrush = new SolidColorBrush(Color.FromArgb(36, 255, 255, 255)),
             BorderThickness = new Thickness(1),
             Cursor = Cursors.Hand,
+            ToolTip = tooltip,
             Child = new TextBlock
             {
-                Text = "\uE72C",
+                Text = glyph,
                 FontFamily = (FontFamily)FindResource("IconFont"),
-                FontSize = 12,
+                FontSize = 13,
                 Foreground = new SolidColorBrush(Color.FromArgb(210, 255, 255, 255)),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextAlignment = TextAlignment.Center
             }
         };
-        refresh.MouseLeftButtonDown += PiggyRefresh_MouseLeftButtonDown;
-        refresh.MouseEnter += (_, _) => refresh.Background = new SolidColorBrush(Color.FromArgb(38, 255, 255, 255));
-        refresh.MouseLeave += (_, _) => refresh.Background = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255));
-        Grid.SetColumn(refresh, 2);
-        grid.Children.Add(refresh);
-        return grid;
+        button.MouseEnter += (_, _) => button.Background = new SolidColorBrush(Color.FromArgb(38, 255, 255, 255));
+        button.MouseLeave += (_, _) => button.Background = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255));
+        return button;
+    }
+
+    private Border CreatePiggyBellActionButton(string tooltip)
+    {
+        // Use a small vector bell instead of relying on a font glyph. It renders
+        // consistently at high DPI and reads more clearly at the compact header size.
+        var bell = new Path
+        {
+            Data = Geometry.Parse(
+                "M8,1.4 C5.65,1.4 3.85,3.22 3.85,5.58 L3.85,8.52 " +
+                "C3.85,9.48 3.42,10.36 2.67,10.98 L1.85,11.67 " +
+                "L1.85,13.05 L14.15,13.05 L14.15,11.67 L13.33,10.98 " +
+                "C12.58,10.36 12.15,9.48 12.15,8.52 L12.15,5.58 " +
+                "C12.15,3.22 10.35,1.4 8,1.4 Z M6.25,14.1 " +
+                "C6.55,15.02 7.12,15.5 8,15.5 C8.88,15.5 9.45,15.02 9.75,14.1 Z"),
+            Fill = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
+            Stretch = Stretch.Uniform
+        };
+
+        var button = new Border
+        {
+            Width = 28,
+            Height = 28,
+            CornerRadius = new CornerRadius(14),
+            Background = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255)),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(36, 255, 255, 255)),
+            BorderThickness = new Thickness(1),
+            Cursor = Cursors.Hand,
+            ToolTip = tooltip,
+            Child = new Viewbox
+            {
+                Width = 16.5,
+                Height = 16.5,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = bell
+            }
+        };
+        button.MouseEnter += (_, _) => button.Background = new SolidColorBrush(Color.FromArgb(38, 255, 255, 255));
+        button.MouseLeave += (_, _) => button.Background = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255));
+        return button;
     }
 
     private Grid BuildQuotaSection(
@@ -454,23 +511,33 @@ public partial class MainWindow
         capsule.VerticalAlignment = VerticalAlignment.Center;
         section.Children.Add(capsule);
 
-        var text = new StackPanel
+        // Use the same fixed text rows for both quota columns so their visual
+        // baselines stay aligned even though Weekly has two extra detail rows.
+        var text = new Grid
         {
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(10, 0, 0, 0)
+            Margin = new Thickness(10, 0, 0, 0),
+            Height = 156
         };
+        text.RowDefinitions.Add(new RowDefinition { Height = new GridLength(24) });
+        text.RowDefinitions.Add(new RowDefinition { Height = new GridLength(50) });
+        text.RowDefinitions.Add(new RowDefinition { Height = new GridLength(30) });
+        text.RowDefinitions.Add(new RowDefinition { Height = new GridLength(28) });
+        text.RowDefinitions.Add(new RowDefinition { Height = new GridLength(24) });
         Grid.SetColumn(text, 1);
         section.Children.Add(text);
 
-        text.Children.Add(new TextBlock
+        var labelText = new TextBlock
         {
             Text = label,
             Foreground = new SolidColorBrush(Color.FromArgb(205, 255, 255, 255)),
             FontFamily = (FontFamily)FindResource("MainSystemFont"),
             FontSize = 12.5,
             FontWeight = FontWeights.Bold,
-            Margin = new Thickness(0, 0, 0, 6)
-        });
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetRow(labelText, 0);
+        text.Children.Add(labelText);
 
         percentText = new TextBlock
         {
@@ -480,8 +547,10 @@ public partial class MainWindow
             FontSize = 39,
             FontWeight = FontWeights.Bold,
             LineHeight = 41,
+            VerticalAlignment = VerticalAlignment.Center,
             Typography = { NumeralAlignment = FontNumeralAlignment.Tabular, NumeralStyle = FontNumeralStyle.Lining }
         };
+        Grid.SetRow(percentText, 1);
         text.Children.Add(percentText);
 
         secondaryText = new TextBlock
@@ -491,24 +560,17 @@ public partial class MainWindow
             FontFamily = (FontFamily)FindResource("MainSystemFont"),
             FontSize = 12,
             FontWeight = FontWeights.Medium,
-            Margin = new Thickness(0, 6, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
             TextWrapping = TextWrapping.Wrap
         };
+        Grid.SetRow(secondaryText, showWeeklyDayBlocks ? 2 : 4);
         text.Children.Add(secondaryText);
 
         if (showWeeklyDayBlocks)
         {
             _piggyWeekDayBlocks = BuildWeeklyDayBlocks();
+            Grid.SetRow(_piggyWeekDayBlocks, 3);
             text.Children.Add(_piggyWeekDayBlocks);
-        }
-        else
-        {
-            text.Children.Add(new Border
-            {
-                Height = 12,
-                Margin = new Thickness(0, 5, 0, 0),
-                Visibility = Visibility.Hidden
-            });
         }
 
         tertiaryText = new TextBlock
@@ -518,10 +580,12 @@ public partial class MainWindow
             FontFamily = (FontFamily)FindResource("MainSystemFont"),
             FontSize = 10.5,
             FontWeight = FontWeights.Medium,
-            Margin = new Thickness(0, showWeeklyDayBlocks ? 4 : 3, 0, 0),
             MinHeight = 15,
+            VerticalAlignment = VerticalAlignment.Center,
+            Visibility = showWeeklyDayBlocks ? Visibility.Visible : Visibility.Hidden,
             TextWrapping = TextWrapping.Wrap
         };
+        Grid.SetRow(tertiaryText, 4);
         text.Children.Add(tertiaryText);
 
         return section;
@@ -532,7 +596,6 @@ public partial class MainWindow
         var panel = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Margin = new Thickness(0, 5, 0, 0),
             Height = 12,
             VerticalAlignment = VerticalAlignment.Center
         };
@@ -701,12 +764,12 @@ public partial class MainWindow
 
     private FrameworkElement BuildBankedResetSection()
     {
-        var grid = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+        var grid = new Grid { Margin = new Thickness(0, 10, 0, 0) };
         grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1) });
         grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         grid.Children.Add(new Border { Background = new SolidColorBrush(Color.FromArgb(24, 255, 255, 255)) });
 
-        var content = new Grid { Margin = new Thickness(8, 9, 8, 8) };
+        var content = new Grid { Margin = new Thickness(10, 12, 10, 12) };
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(104) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         Grid.SetRow(content, 1);
@@ -732,89 +795,6 @@ public partial class MainWindow
         return grid;
     }
 
-    private FrameworkElement BuildPiggyPreviewSection()
-    {
-        var outer = new Grid();
-        outer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1) });
-        outer.RowDefinitions.Add(new RowDefinition { Height = new GridLength(45) });
-        outer.Children.Add(new Border { Background = new SolidColorBrush(Color.FromArgb(17, 255, 255, 255)) });
-
-        var row = new Grid { Margin = new Thickness(8, 7, 8, 0) };
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(72) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        Grid.SetRow(row, 1);
-        outer.Children.Add(row);
-
-        row.Children.Add(new TextBlock
-        {
-            Text = "PREVIEW",
-            Foreground = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)),
-            FontFamily = (FontFamily)FindResource("MainSystemFont"),
-            FontSize = 11,
-            FontWeight = FontWeights.Bold,
-            VerticalAlignment = VerticalAlignment.Center
-        });
-
-        var five = BuildPreviewControl("5H", out _piggyFivePreviewSlider, out _piggyFivePreviewValue);
-        Grid.SetColumn(five, 1);
-        row.Children.Add(five);
-
-        var week = BuildPreviewControl("WEEK", out _piggyWeekPreviewSlider, out _piggyWeekPreviewValue);
-        Grid.SetColumn(week, 3);
-        row.Children.Add(week);
-
-        _piggyFivePreviewSlider.ValueChanged += PiggyPreviewSlider_ValueChanged;
-        _piggyWeekPreviewSlider.ValueChanged += PiggyPreviewSlider_ValueChanged;
-        return outer;
-    }
-
-    private FrameworkElement BuildPreviewControl(string label, out Slider slider, out TextBlock valueText)
-    {
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
-
-        grid.Children.Add(new TextBlock
-        {
-            Text = label,
-            Foreground = new SolidColorBrush(Color.FromArgb(125, 255, 255, 255)),
-            FontFamily = (FontFamily)FindResource("MainSystemFont"),
-            FontSize = 10,
-            FontWeight = FontWeights.Bold,
-            VerticalAlignment = VerticalAlignment.Center
-        });
-
-        slider = new Slider
-        {
-            Minimum = 0,
-            Maximum = 100,
-            Value = 50,
-            Style = (Style)FindResource("PiggyPreviewSlider"),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(2, 0, 7, 0)
-        };
-        Grid.SetColumn(slider, 1);
-        grid.Children.Add(slider);
-
-        valueText = new TextBlock
-        {
-            Text = "50%",
-            Foreground = new SolidColorBrush(Color.FromArgb(195, 255, 255, 255)),
-            FontFamily = (FontFamily)FindResource("MainSystemFont"),
-            FontSize = 10.5,
-            FontWeight = FontWeights.Bold,
-            TextAlignment = TextAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Center,
-            Typography = { NumeralAlignment = FontNumeralAlignment.Tabular }
-        };
-        Grid.SetColumn(valueText, 2);
-        grid.Children.Add(valueText);
-        return grid;
-    }
-
     private Image CreatePiggyPanelImage(double size)
         => new()
         {
@@ -832,8 +812,59 @@ public partial class MainWindow
         if (!_isAnimating) _ = RefreshPiggyBankAsync();
     }
 
+    private void PiggyAlerts_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (_isAnimating) return;
+
+        var dialog = new PiggyAlertSettingsWindow(
+            _settings,
+            playSound => ShowPiggyNotification(
+                "Piggy Bank · Test",
+                "Notifications are working. This is the temporary test alert.",
+                playSound))
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            _settingsService.Save(_settings);
+            RuntimeLog.Log("PIGGY-ALERT", "Piggy Bank alert preferences saved.");
+        }
+    }
+
+    private void HandlePiggyAlerts(PiggyBankSnapshot snapshot)
+    {
+        var evaluation = PiggyBankAlertEngine.Evaluate(snapshot, _settings, DateTimeOffset.UtcNow);
+        if (evaluation.StateChanged)
+            _settingsService.Save(_settings);
+
+        foreach (var alert in evaluation.Alerts)
+            ShowPiggyNotification(alert.Title, alert.Message, _settings.PiggyNotificationSound);
+    }
+
+    private void ShowPiggyNotification(string title, string message, bool playSound)
+    {
+        try
+        {
+            TrayIcon.ShowBalloonTip(
+                title,
+                message,
+                Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+
+            if (playSound)
+                System.Media.SystemSounds.Asterisk.Play();
+        }
+        catch (Exception ex)
+        {
+            RuntimeLog.Warn("PIGGY-ALERT", $"Unable to show notification: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
     private async Task RefreshPiggyBankAsync()
     {
+        _piggyLastRefreshAttemptUtc = DateTime.UtcNow;
         _piggyRefreshCancellation?.Cancel();
         _piggyRefreshCancellation?.Dispose();
         _piggyRefreshCancellation = new CancellationTokenSource();
@@ -844,8 +875,15 @@ public partial class MainWindow
         {
             var snapshot = await PiggyBankQuotaService.ReadAsync(token).ConfigureAwait(true);
             if (token.IsCancellationRequested) return;
+            var cacheResult = PiggyBankSnapshotCache.Resolve(snapshot, _settings, DateTimeOffset.UtcNow);
+            snapshot = cacheResult.Snapshot;
+            if (cacheResult.StateChanged)
+                _settingsService.Save(_settings);
             _piggyBankSnapshot = snapshot;
-            ApplyPiggySnapshot(snapshot, animateLiquids: true);
+            HandlePiggyAlerts(snapshot);
+            ApplyPiggyShellSnapshot(snapshot);
+            if (_piggyBankBuilt)
+                ApplyPiggySnapshot(snapshot, animateLiquids: true);
             SetPiggyStatus("Updated just now");
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -855,13 +893,18 @@ public partial class MainWindow
         catch (Exception ex)
         {
             RuntimeLog.Warn("PIGGY", $"Quota refresh unavailable: {ex.GetType().Name}: {ex.Message}");
-            if (_piggyBankSnapshot is null) SetPiggyEmptyState();
+            if (_piggyBankSnapshot is null)
+            {
+                ApplyPiggyShellSnapshot(null);
+                SetPiggyEmptyState();
+            }
             SetPiggyStatus(_piggyBankSnapshot is null ? "Codex quota unavailable" : "Refresh failed · showing previous data");
         }
     }
 
     private void ApplyPiggySnapshot(PiggyBankSnapshot snapshot, bool animateLiquids)
     {
+        ApplyPiggyShellSnapshot(snapshot);
         var now = DateTimeOffset.UtcNow;
         var five = snapshot.FiveHour;
         var week = snapshot.Weekly;
@@ -896,7 +939,6 @@ public partial class MainWindow
             UpdateLiquidVisual(_piggyWeekVisual!, 0, animateLiquids);
         }
 
-        SetPreviewValuesFromSnapshot(snapshot);
         RebuildBankedResets(snapshot);
         UpdatePiggyTargetHeight(snapshot.BankedResetCount);
     }
@@ -914,41 +956,6 @@ public partial class MainWindow
         UpdateLiquidVisual(_piggyWeekVisual!, 0, animate: false);
         _piggyBankedResetPanel!.Children.Clear();
         _piggyBankedResetPanel.Children.Add(CreateBankedResetEmptyText("Banked resets unavailable"));
-    }
-
-    private void SetPreviewValuesFromSnapshot(PiggyBankSnapshot snapshot)
-    {
-        if (_piggyFivePreviewSlider is null || _piggyWeekPreviewSlider is null) return;
-        _piggySettingPreviewValues = true;
-        try
-        {
-            var five = snapshot.FiveHour?.RemainingPercent ?? 0;
-            var week = snapshot.Weekly?.RemainingPercent ?? 0;
-            _piggyFivePreviewSlider.Value = five;
-            _piggyWeekPreviewSlider.Value = week;
-            _piggyFivePreviewValue!.Text = $"{five}%";
-            _piggyWeekPreviewValue!.Text = $"{week}%";
-        }
-        finally
-        {
-            _piggySettingPreviewValues = false;
-        }
-    }
-
-    private void PiggyPreviewSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_piggySettingPreviewValues || !_piggyBankBuilt ||
-            _piggyFivePreviewSlider is null || _piggyWeekPreviewSlider is null) return;
-
-        var five = PiggyBankFormatting.ClampRemaining(_piggyFivePreviewSlider.Value);
-        var week = PiggyBankFormatting.ClampRemaining(_piggyWeekPreviewSlider.Value);
-        _piggyFivePreviewValue!.Text = $"{five}%";
-        _piggyWeekPreviewValue!.Text = $"{week}%";
-        _piggyFivePercentText!.Text = $"{five}%";
-        _piggyWeekPercentText!.Text = $"{week}%";
-        UpdateLiquidVisual(_piggyFiveVisual!, five, animate: true);
-        UpdateLiquidVisual(_piggyWeekVisual!, week, animate: true);
-        SetPiggyStatus("Preview only · refresh restores live data");
     }
 
     private void RebuildBankedResets(PiggyBankSnapshot snapshot)
@@ -1025,16 +1032,80 @@ public partial class MainWindow
         }
         content.Children.Add(text);
 
-        return new Border
+        var backgroundBrush = new SolidColorBrush(Color.FromArgb(14, 255, 255, 255));
+        var borderBrush = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255));
+        var scale = new ScaleTransform(1, 1);
+        var translate = new TranslateTransform(0, 0);
+        var transformGroup = new TransformGroup();
+        transformGroup.Children.Add(scale);
+        transformGroup.Children.Add(translate);
+
+        var chip = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(14, 255, 255, 255)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(22, 255, 255, 255)),
+            Background = backgroundBrush,
+            BorderBrush = borderBrush,
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(8, 6, 10, 6),
             Margin = new Thickness(0, 0, 7, 4),
-            Child = content
+            Child = content,
+            RenderTransform = transformGroup,
+            RenderTransformOrigin = new Point(0.5, 0.5)
         };
+
+        void AnimateHover(bool hovered)
+        {
+            var targetScale = hovered ? 1.035 : 1.0;
+            var targetY = hovered ? -2.0 : 0.0;
+            var targetBackground = hovered
+                ? Color.FromArgb(30, 255, 255, 255)
+                : Color.FromArgb(14, 255, 255, 255);
+            var targetBorder = hovered
+                ? Color.FromArgb(48, 255, 255, 255)
+                : Color.FromArgb(22, 255, 255, 255);
+
+            if (AnimationConfig.ReduceMotion)
+            {
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+                translate.BeginAnimation(TranslateTransform.YProperty, null);
+                backgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+                borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+                scale.ScaleX = scale.ScaleY = targetScale;
+                translate.Y = targetY;
+                backgroundBrush.Color = targetBackground;
+                borderBrush.Color = targetBorder;
+                return;
+            }
+
+            var duration = TimeSpan.FromMilliseconds(hovered ? 180 : 240);
+            var easing = new ExponentialEase
+            {
+                Exponent = hovered ? 5 : 4,
+                EasingMode = EasingMode.EaseOut
+            };
+
+            var scaleX = new DoubleAnimation(targetScale, duration) { EasingFunction = easing };
+            var scaleY = new DoubleAnimation(targetScale, duration) { EasingFunction = easing };
+            var moveY = new DoubleAnimation(targetY, duration) { EasingFunction = easing };
+            var background = new ColorAnimation(targetBackground, duration) { EasingFunction = easing };
+            var border = new ColorAnimation(targetBorder, duration) { EasingFunction = easing };
+            Timeline.SetDesiredFrameRate(scaleX, AnimationConfig.TargetFps);
+            Timeline.SetDesiredFrameRate(scaleY, AnimationConfig.TargetFps);
+            Timeline.SetDesiredFrameRate(moveY, AnimationConfig.TargetFps);
+            Timeline.SetDesiredFrameRate(background, AnimationConfig.TargetFps);
+            Timeline.SetDesiredFrameRate(border, AnimationConfig.TargetFps);
+
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX, HandoffBehavior.SnapshotAndReplace);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY, HandoffBehavior.SnapshotAndReplace);
+            translate.BeginAnimation(TranslateTransform.YProperty, moveY, HandoffBehavior.SnapshotAndReplace);
+            backgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, background, HandoffBehavior.SnapshotAndReplace);
+            borderBrush.BeginAnimation(SolidColorBrush.ColorProperty, border, HandoffBehavior.SnapshotAndReplace);
+        }
+
+        chip.MouseEnter += (_, _) => AnimateHover(true);
+        chip.MouseLeave += (_, _) => AnimateHover(false);
+        return chip;
     }
 
     private void RefreshPiggyClockText()

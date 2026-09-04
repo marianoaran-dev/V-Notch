@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Windows.Media;
+using VNotch.Models;
 using VNotch.Services;
 using Xunit;
 
@@ -85,6 +86,64 @@ public sealed class PiggyBankQuotaTests
         Assert.Empty(snapshot.BankedResets);
         Assert.Equal(2, snapshot.BankedResetCount);
         Assert.Equal(2, snapshot.MissingResetDetailCount);
+    }
+
+    [Fact]
+    public void SnapshotCache_KeepsLastKnownBankedResetsWhenCodexTemporarilyReturnsNull()
+    {
+        var now = new DateTimeOffset(2026, 9, 4, 12, 0, 0, TimeSpan.Zero);
+        var cachedReset = new PiggyBankedReset(
+            "cached-reset",
+            "Full reset",
+            now.AddDays(-1),
+            now.AddDays(7),
+            "codexRateLimits",
+            "available");
+        var settings = new NotchSettings
+        {
+            PiggyCachedBankedResets = [cachedReset],
+            PiggyCachedBankedResetCount = 1
+        };
+        var unavailable = new PiggyBankSnapshot(now, null, null, [], 0, 0)
+        {
+            BankedResetDataAvailable = false
+        };
+
+        var result = PiggyBankSnapshotCache.Resolve(unavailable, settings, now);
+
+        Assert.Equal(1, result.Snapshot.BankedResetCount);
+        Assert.Single(result.Snapshot.BankedResets);
+        Assert.Equal("cached-reset", result.Snapshot.BankedResets[0].StableId);
+    }
+
+    [Fact]
+    public void SnapshotCache_AuthoritativeEmptyResetPayloadClearsCachedBankedResets()
+    {
+        var now = new DateTimeOffset(2026, 9, 4, 12, 0, 0, TimeSpan.Zero);
+        var settings = new NotchSettings
+        {
+            PiggyCachedBankedResets =
+            [
+                new PiggyBankedReset(
+                    "old-reset",
+                    "Full reset",
+                    now.AddDays(-1),
+                    now.AddDays(7),
+                    "codexRateLimits",
+                    "available")
+            ],
+            PiggyCachedBankedResetCount = 1
+        };
+        var authoritativeEmpty = new PiggyBankSnapshot(now, null, null, [], 0, 0)
+        {
+            BankedResetDataAvailable = true
+        };
+
+        var result = PiggyBankSnapshotCache.Resolve(authoritativeEmpty, settings, now);
+
+        Assert.Equal(0, result.Snapshot.BankedResetCount);
+        Assert.Empty(settings.PiggyCachedBankedResets);
+        Assert.Equal(0, settings.PiggyCachedBankedResetCount);
     }
 
     [Fact]

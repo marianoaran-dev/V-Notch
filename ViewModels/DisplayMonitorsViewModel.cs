@@ -80,21 +80,29 @@ public sealed class DisplayMonitorsViewModel : ObservableObject, IDisposable
     private readonly IMonitorControlService _monitorService;
     private readonly IDispatcherService _dispatcher;
     private readonly MonitorWriteScheduler _writeScheduler;
+    private readonly TimeSpan _operationTimeout;
     private readonly CancellationTokenSource _lifetime = new();
     private Task? _refreshTask;
+    private Task<IReadOnlyList<PhysicalMonitorSnapshot>>? _enumerationTask;
     private int _refreshGeneration;
     private bool _isApplyingPlan;
     private bool _isAllMonitorsLinked;
+    private readonly HashSet<string> _linkedMonitorIds = new(StringComparer.Ordinal);
     private bool _isLoading;
     private string _statusText = "Open Display to detect monitors";
     private bool _disposed;
 
     public ObservableCollection<DisplayMonitorRowViewModel> Monitors { get; } = new();
+    public event Action<bool, IReadOnlyCollection<string>>? LinkStateChanged;
 
     public bool IsAllMonitorsLinked
     {
         get => _isAllMonitorsLinked;
-        set => SetProperty(ref _isAllMonitorsLinked, value);
+        set
+        {
+            if (SetProperty(ref _isAllMonitorsLinked, value))
+                PublishLinkState();
+        }
     }
 
     public bool IsLoading
@@ -111,12 +119,40 @@ public sealed class DisplayMonitorsViewModel : ObservableObject, IDisposable
 
     public DisplayMonitorsViewModel(
         IMonitorControlService monitorService,
-        IDispatcherService dispatcher)
+        IDispatcherService dispatcher,
+        TimeSpan? operationTimeout = null)
     {
         _monitorService = monitorService;
         _dispatcher = dispatcher;
+        _operationTimeout = operationTimeout ?? TimeSpan.FromSeconds(5);
         _writeScheduler = new MonitorWriteScheduler(WriteRequestAsync);
     }
+
+    public void LoadLinkState(bool allMonitorsLinked, IEnumerable<string>? linkedMonitorIds)
+    {
+        _isAllMonitorsLinked = allMonitorsLinked;
+        _linkedMonitorIds.Clear();
+        if (linkedMonitorIds != null)
+        {
+            foreach (var id in linkedMonitorIds.Where(id => !string.IsNullOrWhiteSpace(id)))
+                _linkedMonitorIds.Add(id);
+        }
+    }
+
+    public void SetMonitorLink(DisplayMonitorRowViewModel row, bool enabled)
+    {
+        if (!Monitors.Contains(row)) return;
+
+        row.IsLinkEnabled = enabled;
+        if (enabled)
+            _linkedMonitorIds.Add(row.Id);
+        else
+            _linkedMonitorIds.Remove(row.Id);
+        PublishLinkState();
+    }
+
+    private void PublishLinkState()
+        => LinkStateChanged?.Invoke(_isAllMonitorsLinked, _linkedMonitorIds.ToArray());
 
     public Task RefreshAsync()
     {
@@ -137,7 +173,14 @@ public sealed class DisplayMonitorsViewModel : ObservableObject, IDisposable
             // A manual refresh should observe the values the user just selected,
             // not race the scheduler's short debounce window and read stale DDC
             // state immediately before a pending write reaches the monitor.
-            await _writeScheduler.FlushAsync().ConfigureAwait(false);
+            var flushTask = _writeScheduler.FlushAsync();
+            if (!await CompletesWithinAsync(flushTask).ConfigureAwait(false))
+            {
+                PublishRefreshTimeout(generation,
+                    "Monitor writes are still recovering; try refresh again shortly.");
+                return;
+            }
+            await flushTask.ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
         {
@@ -152,7 +195,29 @@ public sealed class DisplayMonitorsViewModel : ObservableObject, IDisposable
 
         try
         {
-            var monitors = await _monitorService.EnumerateAsync(_lifetime.Token).ConfigureAwait(false);
+            // A Dxva2 call can remain blocked while a display is waking. Keep one
+            // outstanding native enumeration and bound how long the UI refresh
+            // waits for it. Subsequent refreshes reuse that task instead of
+            // spawning an unbounded pile of native calls.
+            if (_enumerationTask == null || _enumerationTask.IsCompleted)
+            {
+                _enumerationTask = _monitorService.EnumerateAsync(_lifetime.Token);
+                _ = _enumerationTask.ContinueWith(
+                    task => _ = task.Exception,
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+            }
+
+            var enumerationTask = _enumerationTask;
+            if (!await CompletesWithinAsync(enumerationTask).ConfigureAwait(false))
+            {
+                PublishRefreshTimeout(generation,
+                    "Monitor detection timed out while the displays were waking. Try refresh again shortly.");
+                return;
+            }
+
+            var monitors = await enumerationTask.ConfigureAwait(false);
             Publish(generation, monitors, null);
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
@@ -164,6 +229,29 @@ public sealed class DisplayMonitorsViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task<bool> CompletesWithinAsync(Task operation)
+    {
+        if (operation.IsCompleted) return true;
+
+        var timeoutTask = Task.Delay(_operationTimeout, _lifetime.Token);
+        var completed = await Task.WhenAny(operation, timeoutTask).ConfigureAwait(false);
+        return completed == operation;
+    }
+
+    private void PublishRefreshTimeout(int generation, string message)
+    {
+        void Apply()
+        {
+            if (_disposed || generation != _refreshGeneration) return;
+            IsLoading = false;
+            StatusText = message;
+            RuntimeLog.Warn("DISPLAY-DDC", message);
+        }
+
+        if (_dispatcher.CheckAccess()) Apply();
+        else _dispatcher.BeginInvoke(Apply);
+    }
+
     private void Publish(
         int generation,
         IReadOnlyList<PhysicalMonitorSnapshot> monitors,
@@ -173,15 +261,21 @@ public sealed class DisplayMonitorsViewModel : ObservableObject, IDisposable
         {
             if (_disposed || generation != _refreshGeneration) return;
 
-            var linkedById = Monitors.ToDictionary(
-                row => row.Id,
-                row => row.IsLinkEnabled,
-                StringComparer.Ordinal);
+            // Preserve any current in-memory changes before replacing monitor rows,
+            // then merge them with the durable link-state set loaded at startup.
+            foreach (var row in Monitors)
+            {
+                if (row.IsLinkEnabled)
+                    _linkedMonitorIds.Add(row.Id);
+                else
+                    _linkedMonitorIds.Remove(row.Id);
+            }
             Monitors.Clear();
             foreach (var monitor in monitors)
             {
-                linkedById.TryGetValue(monitor.Id, out var isLinked);
-                Monitors.Add(new DisplayMonitorRowViewModel(monitor, isLinked));
+                Monitors.Add(new DisplayMonitorRowViewModel(
+                    monitor,
+                    _linkedMonitorIds.Contains(monitor.Id)));
             }
 
             IsLoading = false;

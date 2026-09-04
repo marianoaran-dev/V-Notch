@@ -61,6 +61,7 @@ public sealed class DdcMonitorService : IMonitorControlService
             CancellationToken.None);
     }
 
+
     private async Task<MonitorWriteResult> WriteAndDisposeCancellationAsync(
         CancellationTokenSource linked,
         PhysicalMonitorSnapshot monitor,
@@ -246,6 +247,7 @@ public sealed class DdcMonitorService : IMonitorControlService
 
         return MonitorWriteResult.Success();
     }
+
 
     private static MonitorFeatureSnapshot ReadFeature(IntPtr handle, byte code)
     {

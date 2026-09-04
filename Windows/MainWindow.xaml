@@ -122,69 +122,6 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="PiggyPreviewSlider" TargetType="Slider">
-            <Setter Property="Height" Value="16"/>
-            <Setter Property="Focusable" Value="False"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Slider">
-                        <Grid Height="16" Background="Transparent">
-                            <Border Height="3"
-                                    VerticalAlignment="Center"
-                                    Background="#2CFFFFFF"
-                                    CornerRadius="1.5"/>
-                            <Track x:Name="PART_Track"
-                                   Orientation="Horizontal"
-                                   IsDirectionReversed="False">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
-                                                  Focusable="False"
-                                                  IsTabStop="False">
-                                        <RepeatButton.Template>
-                                            <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="3"
-                                                        VerticalAlignment="Center"
-                                                        Background="#72FFFFFF"
-                                                        CornerRadius="1.5"/>
-                                            </ControlTemplate>
-                                        </RepeatButton.Template>
-                                    </RepeatButton>
-                                </Track.DecreaseRepeatButton>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
-                                                  Focusable="False"
-                                                  IsTabStop="False"
-                                                  Background="Transparent">
-                                        <RepeatButton.Template>
-                                            <ControlTemplate TargetType="RepeatButton">
-                                                <Border Background="Transparent"/>
-                                            </ControlTemplate>
-                                        </RepeatButton.Template>
-                                    </RepeatButton>
-                                </Track.IncreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb Width="12" Height="12">
-                                        <Thumb.Template>
-                                            <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Fill="#F2FFFFFF">
-                                                    <Ellipse.Effect>
-                                                        <DropShadowEffect Color="Black"
-                                                                          BlurRadius="5"
-                                                                          ShadowDepth="1"
-                                                                          Opacity="0.45"/>
-                                                    </Ellipse.Effect>
-                                                </Ellipse>
-                                            </ControlTemplate>
-                                        </Thumb.Template>
-                                    </Thumb>
-                                </Track.Thumb>
-                            </Track>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <DropShadowEffect x:Key="NotchShadow"
                           Color="#000000"
                           ShadowDepth="4"
@@ -297,6 +234,192 @@
                     <ControlTemplate TargetType="Separator">
                         <Border Height="1" Background="{TemplateBinding Background}"/>
                     </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="QuotaGlanceButton" TargetType="Button">
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Shell"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="22"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Shell" Property="Background" Value="#0FFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Shell" Property="BorderBrush" Value="#90FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Shell" Property="Background" Value="#18FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HoverLauncherDockPod" TargetType="Border">
+            <Setter Property="Padding" Value="9"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="33"/>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#70343A40" Offset="0"/>
+                        <GradientStop Color="#681B2025" Offset="0.58"/>
+                        <GradientStop Color="#7A070A0D" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="Black" BlurRadius="22" ShadowDepth="5" Direction="270" Opacity="0.38" RenderingBias="Performance"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HoverLauncherButton" TargetType="Button">
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="True"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Width="{TemplateBinding Width}"
+                              Height="{TemplateBinding Height}"
+                              ClipToBounds="False">
+                            <Ellipse x:Name="SelectedShadow"
+                                     Height="9"
+                                     Margin="8,0,8,-15"
+                                     VerticalAlignment="Bottom"
+                                     Fill="#8A000000"
+                                     Opacity="0"
+                                     IsHitTestVisible="False">
+                                <Ellipse.Effect>
+                                    <BlurEffect Radius="7" RenderingBias="Performance"/>
+                                </Ellipse.Effect>
+                            </Ellipse>
+
+                            <Border x:Name="Shell"
+                                    CornerRadius="24"
+                                    BorderThickness="0">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="Black"
+                                                      BlurRadius="8"
+                                                      ShadowDepth="3"
+                                                      Direction="270"
+                                                      Opacity="0.22"
+                                                      RenderingBias="Performance"/>
+                                </Border.Effect>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#6B4D545C" Offset="0"/>
+                                        <GradientStop Color="#5931373D" Offset="0.44"/>
+                                        <GradientStop Color="#7A0C0F12" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Grid>
+                                    <Ellipse x:Name="ButtonTopHaze"
+                                             Width="28" Height="16"
+                                             HorizontalAlignment="Left"
+                                             VerticalAlignment="Top"
+                                             Margin="6,4,0,0"
+                                             Opacity="0.45"
+                                             IsHitTestVisible="False">
+                                        <Ellipse.Fill>
+                                            <RadialGradientBrush Center="0.45,0.35"
+                                                                   GradientOrigin="0.42,0.28"
+                                                                   RadiusX="0.68" RadiusY="0.72">
+                                                <GradientStop Color="#55FFFFFF" Offset="0"/>
+                                                <GradientStop Color="#10FFFFFF" Offset="0.55"/>
+                                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                            </RadialGradientBrush>
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                    <Border Margin="1"
+                                            CornerRadius="23"
+                                            BorderThickness="1,1,1,0"
+                                            BorderBrush="#18FFFFFF"
+                                            IsHitTestVisible="False"/>
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Shell" Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#855C646D" Offset="0"/>
+                                            <GradientStop Color="#6B3A4148" Offset="0.44"/>
+                                            <GradientStop Color="#84101418" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="ButtonTopHaze" Property="Opacity" Value="0.68"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonTopHaze" Property="Opacity" Value="0.78"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Shell" Property="Background">
+                                    <Setter.Value>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                            <GradientStop Color="#4C343A40" Offset="0"/>
+                                            <GradientStop Color="#54262B30" Offset="0.44"/>
+                                            <GradientStop Color="#8A080A0D" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="ButtonTopHaze" Property="Opacity" Value="0.25"/>
+                            </Trigger>
+                            <Trigger Property="Tag" Value="True">
+                                <Setter TargetName="SelectedShadow" Property="Opacity" Value="0.86"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HoverLauncherIcon" TargetType="Viewbox">
+            <Setter Property="Width" Value="21"/>
+            <Setter Property="Height" Value="21"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="Black"
+                                      BlurRadius="2"
+                                      ShadowDepth="1"
+                                      Direction="270"
+                                      Opacity="0.55"
+                                      RenderingBias="Performance"/>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -435,7 +558,8 @@
                 <Border x:Name="NotchBorder"
                         Grid.Column="1"
                         Background="Transparent"
-                        CornerRadius="0,0,20,20">
+                        CornerRadius="0,0,20,20"
+                        SizeChanged="NotchBorder_SizeChanged">
 
                 <Border x:Name="InnerClipBorder" CornerRadius="0,0,20,20" ClipToBounds="True" Background="Transparent" UseLayoutRounding="True">
                     <Grid SnapsToDevicePixels="True">
@@ -688,6 +812,9 @@
 
 
 
+                    <Grid x:Name="LegacyNavHost"
+                          Visibility="Collapsed"
+                          IsHitTestVisible="False">
                     <Border x:Name="NavIconsBackground"
                             HorizontalAlignment="Left" VerticalAlignment="Top"
                             Margin="8,-2,0,0" Panel.ZIndex="199"
@@ -806,6 +933,89 @@
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                             </Border>
+                        </StackPanel>
+                    </Grid>
+                    </Grid>
+
+                    <Grid x:Name="QuotaGlancePanel"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Height="48"
+                          Margin="0,2,18,0"
+                          Panel.ZIndex="180"
+                          Visibility="Visible"
+                          Opacity="1">
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                            <Button x:Name="FiveHourQuotaGlanceButton"
+                                    Style="{StaticResource QuotaGlanceButton}"
+                                    Margin="0,0,14,0"
+                                    Click="QuotaGlanceButton_Click"
+                                    AutomationProperties.Name="5-hour Codex quota"
+                                    ToolTip="5-hour Codex quota">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Grid Width="40" Height="40" Margin="0,0,8,0">
+                                        <Ellipse Stroke="#30343A" StrokeThickness="6"/>
+                                        <Ellipse x:Name="FiveHourQuotaGlanceDot"
+                                                 Fill="Transparent"
+                                                 Stroke="#737980"
+                                                 StrokeThickness="6"
+                                                 StrokeDashCap="Flat"
+                                                 RenderTransformOrigin="0.5,0.5">
+                                            <Ellipse.RenderTransform>
+                                                <RotateTransform Angle="-90"/>
+                                            </Ellipse.RenderTransform>
+                                        </Ellipse>
+                                        <Ellipse Margin="6" Fill="#FF0B0D0F"/>
+                                        <Viewbox Width="14" Height="14" Stretch="Uniform"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Path Fill="White" Data="M256 512C114.6 512 0 397.4 0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256C512 397.4 397.4 512 256 512zM232 256C232 264 236 271.5 242.7 275.1L338.7 339.1C349.7 347.3 364.6 344.3 371.1 333.3C379.3 322.3 376.3 307.4 365.3 300L280 243.2V120C280 106.7 269.3 96 255.1 96C242.7 96 231.1 106.7 231.1 120L232 256z"/>
+                                        </Viewbox>
+                                    </Grid>
+                                    <TextBlock x:Name="FiveHourQuotaGlanceText"
+                                               Text="--"
+                                               Foreground="White"
+                                               FontFamily="{StaticResource MainSystemFont}"
+                                               FontSize="16"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="WeeklyQuotaGlanceButton"
+                                    Style="{StaticResource QuotaGlanceButton}"
+                                    Click="QuotaGlanceButton_Click"
+                                    AutomationProperties.Name="Weekly Codex quota"
+                                    ToolTip="Weekly Codex quota">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Grid Width="40" Height="40" Margin="0,0,8,0">
+                                        <Ellipse Stroke="#30343A" StrokeThickness="6"/>
+                                        <Ellipse x:Name="WeeklyQuotaGlanceDot"
+                                                 Fill="Transparent"
+                                                 Stroke="#737980"
+                                                 StrokeThickness="6"
+                                                 StrokeDashCap="Flat"
+                                                 RenderTransformOrigin="0.5,0.5">
+                                            <Ellipse.RenderTransform>
+                                                <RotateTransform Angle="-90"/>
+                                            </Ellipse.RenderTransform>
+                                        </Ellipse>
+                                        <Ellipse Margin="6" Fill="#FF0B0D0F"/>
+                                        <Viewbox Width="14" Height="14" Stretch="Uniform"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Path Fill="White" Data="M112 0c8.8 0 16 7.2 16 16V32H384V16c0-8.8 7.2-16 16-16s16 7.2 16 16V32h24c39.8 0 72 32.2 72 72V440c0 39.8-32.2 72-72 72H72c-39.8 0-72-32.2-72-72V104C0 64.2 32.2 32 72 32H96V16c0-8.8 7.2-16 16-16zM48 192V440c0 13.3 10.7 24 24 24H440c13.3 0 24-10.7 24-24V192H48zM72 80c-13.3 0-24 10.7-24 24v40H464V104c0-13.3-10.7-24-24-24H416v16c0 8.8-7.2 16-16 16s-16-7.2-16-16V80H128v16c0 8.8-7.2 16-16 16s-16-7.2-16-16V80H72z"/>
+                                        </Viewbox>
+                                    </Grid>
+                                    <TextBlock x:Name="WeeklyQuotaGlanceText"
+                                               Text="--"
+                                               Foreground="White"
+                                               FontFamily="{StaticResource MainSystemFont}"
+                                               FontSize="16"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Grid>
 
@@ -1597,8 +1807,8 @@
                                 MouseLeave="SettingsButton_MouseLeave"
                                 RenderTransformOrigin="0.5,0.5"
                                 Opacity="0"
-                                Visibility="Visible"
-                                IsHitTestVisible="True">
+                                Visibility="Collapsed"
+                                IsHitTestVisible="False">
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform x:Name="SettingsScale" ScaleX="1" ScaleY="1"/>
@@ -1628,8 +1838,8 @@
                                 MouseLeave="ExitButton_MouseLeave"
                                 RenderTransformOrigin="0.5,0.5"
                                 Opacity="0"
-                                Visibility="Visible"
-                                IsHitTestVisible="True">
+                                Visibility="Collapsed"
+                                IsHitTestVisible="False">
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform x:Name="ExitScale" ScaleX="1" ScaleY="1"/>
@@ -3100,7 +3310,7 @@
                                     </ScrollViewer.Resources>
                                     <Canvas x:Name="ShelfItemsContainer"
                                             Background="Transparent"
-                                            Height="112"
+                                            Height="224"
                                             Margin="10,6"
                                             HorizontalAlignment="Left"
                                             VerticalAlignment="Center"/>
@@ -3238,7 +3448,7 @@
                                     Height="58"
                                     CornerRadius="16"
                                     Padding="12,0"
-                                    BorderBrush="#18FFFFFF"
+                                    BorderBrush="#12FFFFFF"
                                     BorderThickness="1"
                                     SnapsToDevicePixels="True">
                                 <Border.Background>
@@ -3314,20 +3524,17 @@
                                              Height="46"
                                              MinWidth="150"
                                              Margin="12,0,0,0"
-                                             CornerRadius="13"
-                                             BorderThickness="1"
+                                             CornerRadius="0"
+                                             BorderThickness="0"
                                              Cursor="Hand"
                                              ToolTip="Click to type a custom time — 12:30, 90, or 1h 20m"
                                              MouseLeftButtonDown="CountdownDisplayPanel_Click"
                                              SizeChanged="CountdownDisplayPanel_SizeChanged">
                                          <Border.BorderBrush>
-                                             <SolidColorBrush x:Name="CountdownPanelBorderBrush" Color="#22FFFFFF"/>
+                                             <SolidColorBrush x:Name="CountdownPanelBorderBrush" Color="#10FFFFFF"/>
                                          </Border.BorderBrush>
                                          <Border.Background>
-                                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                                 <GradientStop Color="#F20B0B0B" Offset="0"/>
-                                                 <GradientStop Color="#F7050505" Offset="1"/>
-                                             </LinearGradientBrush>
+                                             <SolidColorBrush Color="Transparent"/>
                                          </Border.Background>
                                          <Grid>
                                              <TextBlock x:Name="CountdownDisplay"
@@ -3381,10 +3588,11 @@
                                              </TextBox>
 
                                              <Grid x:Name="CountdownProgressTrack"
-                                                   Height="3"
+                                                   Height="2"
                                                    VerticalAlignment="Bottom"
-                                                   Margin="14,0,14,7"
-                                                   IsHitTestVisible="False">
+                                                   Margin="14,0,14,8"
+                                                   IsHitTestVisible="False"
+                                                   Visibility="Collapsed">
                                                  <Border Background="#14FFFFFF" CornerRadius="1.5"/>
                                                  <Border x:Name="CountdownProgressFill"
                                                          Width="0"
@@ -3397,9 +3605,9 @@
                                                          </LinearGradientBrush>
                                                      </Border.Background>
                                                      <Border x:Name="CountdownProgressEdge"
-                                                             Width="5"
-                                                             Height="5"
-                                                             CornerRadius="2.5"
+                                                             Width="4"
+                                                             Height="4"
+                                                             CornerRadius="2"
                                                              Margin="0,-1,-1,-1"
                                                              HorizontalAlignment="Right"
                                                              Background="#FFC24A"
@@ -4011,6 +4219,167 @@
                   VerticalAlignment="Top"
                   RenderOptions.EdgeMode="Unspecified"/>
         </Grid>
+
+        <Grid x:Name="HoverLauncherDock"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Top"
+              Margin="0,32,0,0"
+              Opacity="0"
+              Visibility="Collapsed"
+              Panel.ZIndex="3500"
+              MouseEnter="HoverLauncherDock_MouseEnter"
+              MouseLeave="HoverLauncherDock_MouseLeave"
+              RenderTransformOrigin="0.5,0">
+            <Grid.RenderTransform>
+                <TranslateTransform x:Name="HoverLauncherTranslate" Y="-6"/>
+            </Grid.RenderTransform>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="28"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Border x:Name="HoverLauncherPrimaryDock"
+                    Grid.Column="0"
+                    Style="{StaticResource HoverLauncherDockPod}">
+            <Grid ClipToBounds="False">
+                <Border CornerRadius="33"
+                        Margin="0"
+                        IsHitTestVisible="False"
+                        Opacity="0.42">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#24FFFFFF" Offset="0"/>
+                            <GradientStop Color="#08FFFFFF" Offset="0.24"/>
+                            <GradientStop Color="#00FFFFFF" Offset="0.52"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+            <StackPanel Orientation="Horizontal" Background="Transparent">
+                <Button x:Name="HoverLauncherHomeButton"
+                        Style="{StaticResource HoverLauncherButton}"
+                        Margin="0,0,10,0"
+                        AutomationProperties.Name="Home"
+                        ToolTip="Home"
+                        Click="HoverLauncherHomeButton_Click">
+                    <Button.RenderTransform><ScaleTransform x:Name="HoverLauncherHomeScale" ScaleX="1" ScaleY="1"/></Button.RenderTransform>
+                    <Viewbox Style="{StaticResource HoverLauncherIcon}">
+                        <Path Data="M575.8 255.5c0 18-15 32.1-32 32.1l-32 0 .7 160.2c0 2.7-.2 5.4-.5 8.1l0 16.2c0 22.1-17.9 40-40 40l-16 0c-1.1 0-2.2 0-3.3-.1c-1.4 .1-2.8 .1-4.2 .1L416 512l-24 0c-22.1 0-40-17.9-40-40l0-24 0-64c0-17.7-14.3-32-32-32l-64 0c-17.7 0-32 14.3-32 32l0 64 0 24c0 22.1-17.9 40-40 40l-24 0-31.9 0c-1.5 0-3-.1-4.5-.2c-1.2 .1-2.4 .2-3.6 .2l-16 0c-22.1 0-40-17.9-40-40l0-112c0-.9 0-1.9 .1-2.8l0-69.7-32 0c-18 0-32-14-32-32.1c0-9 3-17 10-24L266.4 8c7-7 15-8 22-8s15 2 21 7L564.8 231.5c8 7 12 15 11 24z" Fill="White"/>
+                    </Viewbox>
+                </Button>
+
+                <Button x:Name="HoverLauncherShelfButton"
+                        Style="{StaticResource HoverLauncherButton}"
+                        Margin="0,0,10,0"
+                        AutomationProperties.Name="File Shelf"
+                        ToolTip="File Shelf"
+                        Click="HoverLauncherShelfButton_Click">
+                    <Button.RenderTransform><ScaleTransform x:Name="HoverLauncherShelfScale" ScaleX="1" ScaleY="1"/></Button.RenderTransform>
+                    <Viewbox Style="{StaticResource HoverLauncherIcon}">
+                        <Path Data="M447 56.25C443.5 42 430.7 31.1 416 31.1H96c-14.69 0-27.47 10-31.03 24.25L3.715 304.9C1.247 314.9 0 325.2 0 335.5v96.47c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48v-96.47c0-10.32-1.247-20.6-3.715-30.61L447 56.25zM352 352H160L128 288H72.97L121 96h270l48.03 192H384L352 352z" Fill="White"/>
+                    </Viewbox>
+                </Button>
+
+                <Button x:Name="HoverLauncherTimerButton"
+                        Style="{StaticResource HoverLauncherButton}"
+                        Margin="0,0,10,0"
+                        AutomationProperties.Name="Timer"
+                        ToolTip="Timer"
+                        Click="HoverLauncherTimerButton_Click">
+                    <Button.RenderTransform><ScaleTransform x:Name="HoverLauncherTimerScale" ScaleX="1" ScaleY="1"/></Button.RenderTransform>
+                    <Viewbox Style="{StaticResource HoverLauncherIcon}">
+                        <Path Data="M256 512C114.6 512 0 397.4 0 256C0 114.6 114.6 0 256 0C397.4 0 512 114.6 512 256C512 397.4 397.4 512 256 512zM232 256C232 264 236 271.5 242.7 275.1L338.7 339.1C349.7 347.3 364.6 344.3 371.1 333.3C379.3 322.3 376.3 307.4 365.3 300L280 243.2V120C280 106.7 269.3 96 255.1 96C242.7 96 231.1 106.7 231.1 120L232 256z" Fill="White"/>
+                    </Viewbox>
+                </Button>
+
+                <Button x:Name="HoverLauncherAudioButton"
+                        Style="{StaticResource HoverLauncherButton}"
+                        Margin="0,0,10,0"
+                        AutomationProperties.Name="Audio"
+                        ToolTip="Audio"
+                        Click="HoverLauncherAudioButton_Click">
+                    <Button.RenderTransform><ScaleTransform x:Name="HoverLauncherAudioScale" ScaleX="1" ScaleY="1"/></Button.RenderTransform>
+                    <Viewbox Style="{StaticResource HoverLauncherIcon}">
+                        <Path Data="M301.1 34.8C312.6 40 320 51.4 320 64l0 384c0 12.6-7.4 24-18.9 29.2s-25 3.1-34.4-5.3L131.8 352 64 352c-35.3 0-64-28.7-64-64l0-64c0-35.3 28.7-64 64-64l67.8 0L266.7 40.1c9.4-8.4 22.9-10.4 34.4-5.3zM412.6 181.5C434.1 199.1 448 225.9 448 256s-13.9 56.9-35.4 74.5c-10.3 8.4-25.4 6.8-33.8-3.5s-6.8-25.4 3.5-33.8C393.1 284.4 400 271 400 256s-6.9-28.4-17.7-37.3c-10.3-8.4-11.8-23.5-3.5-33.8s23.5-11.8 33.8-3.5z" Fill="White"/>
+                    </Viewbox>
+                </Button>
+
+                <Button x:Name="HoverLauncherDisplayButton"
+                        Style="{StaticResource HoverLauncherButton}"
+                        Margin="0,0,10,0"
+                        AutomationProperties.Name="Display"
+                        ToolTip="Display"
+                        Click="HoverLauncherDisplayButton_Click">
+                    <Button.RenderTransform><ScaleTransform x:Name="HoverLauncherDisplayScale" ScaleX="1" ScaleY="1"/></Button.RenderTransform>
+                    <Viewbox Style="{StaticResource HoverLauncherIcon}">
+                        <Path Data="M64 0C28.7 0 0 28.7 0 64L0 352c0 35.3 28.7 64 64 64l176 0-10.7 32L160 448c-17.7 0-32 14.3-32 32s14.3 32 32 32l256 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-69.3 0L336 416l176 0c35.3 0 64-28.7 64-64l0-288c0-35.3-28.7-64-64-64L64 0zM512 64l0 224L64 288 64 64l448 0z" Fill="White"/>
+                    </Viewbox>
+                </Button>
+
+                <Button x:Name="HoverLauncherPiggyButton"
+                        Style="{StaticResource HoverLauncherButton}"
+                        AutomationProperties.Name="Piggy Bank"
+                        ToolTip="Piggy Bank"
+                        Click="HoverLauncherPiggyButton_Click">
+                    <Button.RenderTransform><ScaleTransform x:Name="HoverLauncherPiggyScale" ScaleX="1" ScaleY="1"/></Button.RenderTransform>
+                    <Viewbox Style="{StaticResource HoverLauncherIcon}">
+                        <Grid Width="326.11" Height="353.12">
+                            <Path Fill="White" Data="M101.06,58.64C88.12,34.38,2.04,41.63,2.04,41.63c0,0-10.15,87.31,14.8,100.84,19.21,10.4,94.7-64.16,84.22-83.84Z"/>
+                            <Path Fill="White" Stroke="White" StrokeThickness="1" Data="M84.88,71.96c-8.02-15.04-61.37-10.54-61.37-10.54,0,0-6.29,54.13,9.17,62.51,11.9,6.45,58.7-39.77,52.2-51.97Z"/>
+                            <Path Fill="White" Data="M308.01,141.85c24.36-12.88,17.08-98.57,17.08-98.57,0,0-87.7-10.1-101.29,14.73-10.45,19.11,64.45,94.28,84.21,83.84Z"/>
+                            <Path Fill="White" Stroke="White" StrokeThickness="1" Data="M294.63,125.76c15.1-7.99,10.59-61.11,10.59-61.11,0,0-54.36-6.26-62.79,9.14-6.47,11.84,39.95,58.44,52.2,51.97Z"/>
+                            <Path Fill="White" Data="M163.06,101.18s-16.17-54.57-52.56-64.79c0,0,16.33-9.48,28.32-4.89,0,0,.75-9.96-10.03-17.1,0,0,23.46-5.04,35.09,11.65,0,0,1.61-17.33-2.59-26.06,0,0,38.85,9.17,48.89,42.23,0,0-39.5,11.79-47.13,58.95Z"/>
+                            <Path Fill="White" Data="M321.66,187.05c0,91.72-70.85,166.07-158.26,166.07S5.15,278.77,5.15,187.05,76,20.99,163.41,20.99s158.26,74.35,158.26,166.07ZM163.06,182.72c-42.16,0-76.33,22.04-76.33,65.97s34.17,38.86,76.33,38.86,76.33,5.07,76.33-38.86-34.17-65.97-76.33-65.97ZM110.31,239.34c0,11.67,8.37,21.13,18.69,21.13s18.69-9.46,18.69-21.13-8.37-21.13-18.69-21.13-18.69,9.46-18.69,21.13ZM178.42,239.34c0,11.67,8.37,21.13,18.69,21.13s18.69-9.46,18.69-21.13-8.37-21.13-18.69-21.13-18.69,9.46-18.69,21.13ZM57.28,165.92c0,11.25,7.52,20.37,16.79,20.37s16.79-9.12,16.79-20.37-7.52-20.37-16.79-20.37-16.79,9.12-16.79,20.37ZM235.24,165.39c0,11.25,7.52,20.37,16.79,20.37s16.79-9.12,16.79-20.37-7.52-20.37-16.79-20.37-16.79,9.12-16.79,20.37Z"/>
+                        </Grid>
+                    </Viewbox>
+                </Button>
+            </StackPanel>
+            </Grid>
+        </Border>
+
+            <Border x:Name="HoverLauncherUtilityDock"
+                    Grid.Column="2"
+                    Style="{StaticResource HoverLauncherDockPod}">
+                <Grid ClipToBounds="False">
+                    <Border CornerRadius="33"
+                            Margin="0"
+                            IsHitTestVisible="False"
+                            Opacity="0.42">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#24FFFFFF" Offset="0"/>
+                                <GradientStop Color="#08FFFFFF" Offset="0.24"/>
+                                <GradientStop Color="#00FFFFFF" Offset="0.52"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Button x:Name="HoverLauncherSettingsButton"
+                                Style="{StaticResource HoverLauncherButton}"
+                                Margin="0,0,8,0"
+                                AutomationProperties.Name="Settings"
+                                ToolTip="Settings"
+                                Click="HoverLauncherSettingsButton_Click">
+                            <Button.RenderTransform><ScaleTransform x:Name="HoverLauncherSettingsScale" ScaleX="1" ScaleY="1"/></Button.RenderTransform>
+                            <Viewbox Style="{StaticResource HoverLauncherIcon}">
+                                <Path Data="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6 .3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z" Fill="White"/>
+                            </Viewbox>
+                        </Button>
+
+                        <Button x:Name="HoverLauncherExitButton"
+                                Style="{StaticResource HoverLauncherButton}"
+                                AutomationProperties.Name="Quit"
+                                ToolTip="Quit"
+                                Click="HoverLauncherExitButton_Click">
+                            <Button.RenderTransform><ScaleTransform x:Name="HoverLauncherExitScale" ScaleX="1" ScaleY="1"/></Button.RenderTransform>
+                            <Viewbox Style="{StaticResource HoverLauncherIcon}">
+                                <Path Data="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 224c0 17.7 14.3 32 32 32s32-14.3 32-32l0-224zM143.5 120.6c13.6-11.3 15.4-31.5 4.1-45.1s-31.5-15.4-45.1-4.1C49.7 115.4 16 181.8 16 256c0 132.5 107.5 240 240 240s240-107.5 240-240c0-74.2-33.8-140.6-86.6-184.6c-13.6-11.3-33.8-9.4-45.1 4.1s-9.4 33.8 4.1 45.1c38.9 32.3 63.5 81 63.5 135.4c0 97.2-78.8 176-176 176s-176-78.8-176-176c0-54.4 24.7-103.1 63.5-135.4z" Fill="White"/>
+                            </Viewbox>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
     </Grid>
+</Grid>
 </Grid>
 </Window>

@@ -97,6 +97,10 @@ public partial class MainWindow
                 // User just clicked without dragging -> toggle/open notch normally
                 ToggleNotchFromClick(e.ClickCount);
             }
+            else
+            {
+                SyncHoverDetectionBoundsToPhysicalNotch();
+            }
 
             e.Handled = true;
             return;

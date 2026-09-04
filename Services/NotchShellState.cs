@@ -21,7 +21,7 @@ public sealed class NotchShellState
     public double ExpandedWidth { get; set; } = 480;
     public double ExpandedHeight { get; set; } = 147;
     public double CornerRadiusCollapsed { get; set; }
-    public double CornerRadiusExpanded { get; set; } = 24;
+    public double CornerRadiusExpanded { get; set; } = 32;
     public int FixedX { get; set; }
     public int FixedY { get; set; }
     public int WindowWidth { get; set; }

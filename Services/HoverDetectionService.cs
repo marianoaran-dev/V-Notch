@@ -25,6 +25,7 @@ public class HoverDetectionService : IDisposable
     private readonly TimeSpan _leaveDelay = TimeSpan.FromMilliseconds(400);
     private bool _pendingEnter;
     private bool _pendingLeave;
+    private int _pollCount;
 
     public event EventHandler? HoverEnter;
     public event EventHandler? HoverLeave;
@@ -69,6 +70,9 @@ public class HoverDetectionService : IDisposable
             _hoverZone.Width + ProximityMargin * 2,
             _hoverZone.Height + ProximityMargin * 2
         );
+
+        RuntimeLog.Log("HOVER-DETECT",
+            $"bounds={_notchBounds} hoverZone={_hoverZone}");
     }
 
     public void Start()
@@ -77,6 +81,7 @@ public class HoverDetectionService : IDisposable
         {
             ApplyInterval(FastIntervalMs);
             _pollTimer.Start();
+            RuntimeLog.Log("HOVER-DETECT", $"started interval={_pollTimer.Interval.TotalMilliseconds:0}ms enabled={_pollTimer.IsEnabled}");
         }
     }
 
@@ -90,6 +95,8 @@ public class HoverDetectionService : IDisposable
         if (!GetCursorPos(out POINT point)) return;
 
         var mousePoint = new Point(point.X, point.Y);
+        if (Interlocked.Increment(ref _pollCount) == 1)
+            RuntimeLog.Log("HOVER-DETECT", $"first poll cursor={mousePoint} zone={_hoverZone}");
         MousePositionChanged?.Invoke(this, mousePoint);
 
         bool isInZone = _hoverZone.Contains(mousePoint);
@@ -113,6 +120,7 @@ public class HoverDetectionService : IDisposable
 
                     _isHovering = true;
                     _pendingEnter = false;
+                    RuntimeLog.Log("HOVER-DETECT", $"enter cursor={mousePoint} zone={_hoverZone}");
                     HoverEnter?.Invoke(this, EventArgs.Empty);
                 }
             }
@@ -135,6 +143,7 @@ public class HoverDetectionService : IDisposable
 
                     _isHovering = false;
                     _pendingLeave = false;
+                    RuntimeLog.Log("HOVER-DETECT", $"leave cursor={mousePoint} zone={_hoverZone}");
                     HoverLeave?.Invoke(this, EventArgs.Empty);
                 }
             }

@@ -6,7 +6,13 @@ public sealed record PiggyBankSnapshot(
     PiggyQuotaWindow? Weekly,
     IReadOnlyList<PiggyBankedReset> BankedResets,
     int BankedResetCount,
-    int MissingResetDetailCount);
+    int MissingResetDetailCount)
+{
+    // Codex can transiently return rateLimitResetCredits as null even when reset
+    // credits were present on an earlier read. Callers use this to distinguish an
+    // authoritative empty list from a temporarily unavailable reset-credit field.
+    public bool BankedResetDataAvailable { get; init; }
+}
 
 public sealed record PiggyQuotaWindow(
     int UsedPercent,

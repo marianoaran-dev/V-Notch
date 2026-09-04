@@ -745,43 +745,16 @@ public partial class MainWindow
 
             if (_isMusicCompactMode)
             {
-                if (info?.Thumbnail != null && !_isClipboardPeekActive)
-                {
-                    string compactTrackId = $"{info.CurrentTrack}|{info.CurrentArtist}";
-                    if (compactTrackId != _lastAnimatedTrackSignature && !_thumbnailShownForCurrentTrack)
-                    {
-                        bool wasHidden = CompactThumbnailBorder.Visibility != Visibility.Visible ||
-                                         CompactThumbnailBorder.Opacity < 0.01;
-
-                        if (wasHidden)
-                        {
-                            CompactThumbnailScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-                            CompactThumbnailScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
-                            CompactThumbnailBorder.BeginAnimation(OpacityProperty, null);
-                            CompactThumbnailBorder.Visibility = Visibility.Visible;
-                            CompactThumbnail.Source = info.Thumbnail;
-                            ThumbnailImage.Source = info.Thumbnail;
-                            PlayThumbnailRevealAnimation();
-                        }
-                        else
-                        {
-                            AnimateThumbnailSwitchOnly(info.Thumbnail);
-                        }
-                        _thumbnailShownForCurrentTrack = true;
-                    }
-                    else
-                    {
-                        ResetCompactThumbnailRestingState();
-                    }
-                }
-                else
-                {
-                    ResetCompactThumbnailRestingState();
-                }
-                if (!_isClipboardPeekActive)
-                {
-                    FadeSwitch(CollapsedContent, MusicCompactContent);
-                }
+                // The v14 idle shell is deliberately quota-only. Media remains
+                // available in the Audio view, but persistent album/track chrome
+                // must not compete with the two quota glances while collapsed.
+                ResetCompactThumbnailRestingState();
+                MusicCompactContent.BeginAnimation(OpacityProperty, null);
+                MusicCompactContent.Opacity = 0;
+                MusicCompactContent.Visibility = Visibility.Collapsed;
+                CollapsedContent.BeginAnimation(OpacityProperty, null);
+                CollapsedContent.Opacity = 0;
+                CollapsedContent.Visibility = Visibility.Collapsed;
             }
             else
             {

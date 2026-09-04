@@ -92,6 +92,38 @@ public class DataProtectionSettingsTests : IDisposable
     }
 
     [Fact]
+    public void SaveAndLoad_RoundTripsLastExpandedLauncherDestination()
+    {
+        var path = Path.Combine(_directory, "settings.json");
+        var service = new SettingsService(path, _ => { });
+        service.Save(new NotchSettings { LastExpandedLauncherDestination = "PiggyBank" });
+
+        var loaded = service.Load();
+
+        Assert.Equal("PiggyBank", loaded.LastExpandedLauncherDestination);
+    }
+
+    [Fact]
+    public void Load_InvalidLastExpandedLauncherDestination_NormalizesToHome()
+    {
+        var path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            SettingsVersion = SettingsMigrator.CurrentVersion,
+            LastExpandedLauncherDestination = "UnknownPanel"
+        }));
+
+        var loaded = new SettingsService(path, _ => { }).Load();
+
+        Assert.Equal("Home", loaded.LastExpandedLauncherDestination);
+        Assert.Equal(
+            "Home",
+            JsonDocument.Parse(File.ReadAllText(path)).RootElement
+                .GetProperty(nameof(NotchSettings.LastExpandedLauncherDestination))
+                .GetString());
+    }
+
+    [Fact]
     public void Load_CorruptSettings_QuarantinesFileAndRestoresDefaults()
     {
         var path = Path.Combine(_directory, "settings.json");

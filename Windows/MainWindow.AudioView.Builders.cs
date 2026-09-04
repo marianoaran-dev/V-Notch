@@ -520,6 +520,19 @@ public partial class MainWindow
                 }));
             }
 
+            if (appRows.Children.Count == 0)
+            {
+                appRows.Children.Add(new TextBlock
+                {
+                    Text = "No active application audio sessions.",
+                    Foreground = AudioMuted,
+                    FontSize = 11.5,
+                    FontWeight = FontWeights.SemiBold,
+                    FontFamily = AudioFont,
+                    Margin = new Thickness(28, 8, 0, 10)
+                });
+            }
+
             AudioRoot.Children.Add(BuildSectionHeader(Loc.Get("audio.applications"), _audioAppsExpanded,
                 showVolumeLabel: false, deviceLabel: Loc.Get("audio.redirectTo"), out var appChevron, out var appClick, out var appLabels, topMargin: 14));
             AudioRoot.Children.Add(appRows);

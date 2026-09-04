@@ -52,7 +52,7 @@ public partial class MainWindow
     private static readonly Brush _countdownStartRunningBrush = CreateFrozenVerticalGradient(
         Color.FromRgb(0xE0, 0x8A, 0x1E), Color.FromRgb(0xC2, 0x64, 0x00));
 
-    private static readonly Color _countdownBorderIdleColor = Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF);
+    private static readonly Color _countdownBorderIdleColor = Color.FromArgb(0x10, 0xFF, 0xFF, 0xFF);
     private static readonly Color _countdownBorderEditingColor = Color.FromArgb(0x8C, 0xFF, 0x8C, 0x00);
     private static readonly Color _countdownBorderFlashColor = Color.FromArgb(0x70, 0xFF, 0x8C, 0x00);
     private static readonly Color _countdownBorderErrorColor = Color.FromArgb(0xB4, 0xFF, 0x45, 0x3A);
@@ -196,6 +196,7 @@ public partial class MainWindow
             TimerContent.BeginAnimation(OpacityProperty, null);
             TimerContent.RenderTransform = null;
             RestoreTimerContentOpacity();
+            RememberActiveHoverLauncherDestination();
         };
 
         RestoreTimerContentOpacity();
@@ -394,6 +395,7 @@ public partial class MainWindow
             TimerContent.BeginAnimation(OpacityProperty, null);
             TimerContent.RenderTransform = null;
             RestoreTimerContentOpacity();
+            RememberActiveHoverLauncherDestination();
         };
 
         AnimateClockViewNotchResize(
@@ -545,7 +547,14 @@ public partial class MainWindow
 
         double currentH2 = NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : _clockViewHeight;
         double currentWidthExit2 = NotchBorder.ActualWidth > 0 ? NotchBorder.ActualWidth : _clockViewWidth;
-        AnimateClockViewNotchResize(currentWidthExit2, currentH2, _expandedWidth, _expandedHeight, durIn, inDelay, RestoreExpandedWindowSize);
+        AnimateClockViewNotchResize(
+            currentWidthExit2,
+            currentH2,
+            _expandedWidth,
+            SecondaryViewHeight,
+            durIn,
+            inDelay,
+            () => ResizeHostWindowHeight(SecondaryViewHeight));
 
         SecondaryContent.Visibility = Visibility.Visible;
         SecondaryContent.BeginAnimation(OpacityProperty, null);
@@ -584,6 +593,7 @@ public partial class MainWindow
                 StopCameraPreviewForViewExit();
             }
             ResetCameraSectionLayoutInstant();
+            RememberActiveHoverLauncherDestination();
         };
 
         SecondaryContent.BeginAnimation(OpacityProperty, fadeIn);

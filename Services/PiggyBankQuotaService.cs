@@ -327,6 +327,7 @@ internal static class PiggyBankRateLimitParser
                      ?? windows.FirstOrDefault(window => window.Source.EndsWith("secondary", StringComparison.OrdinalIgnoreCase));
 
         var resetObject = GetProperty(result, "rateLimitResetCredits");
+        bool resetDataAvailable = resetObject.ValueKind == JsonValueKind.Object;
         var credits = ParseCredits(GetProperty(resetObject, "credits"));
         var reportedCount = GetInt(resetObject, "availableCount") ?? credits.Count;
         var availableCount = Math.Max(reportedCount, credits.Count);
@@ -337,7 +338,10 @@ internal static class PiggyBankRateLimitParser
             weekly,
             credits,
             availableCount,
-            Math.Max(availableCount - credits.Count, 0));
+            Math.Max(availableCount - credits.Count, 0))
+        {
+            BankedResetDataAvailable = resetDataAvailable
+        };
     }
 
     private static void AddWindow(ICollection<PiggyQuotaWindow> windows, string source, JsonElement value)

@@ -64,6 +64,23 @@ public class SettingsMigratorTests
     }
 
     [Fact]
+    public void NewDefaults_RememberHomeAsLastExpandedLauncherDestination()
+    {
+        var settings = new NotchSettings();
+
+        Assert.Equal("Home", settings.LastExpandedLauncherDestination);
+    }
+
+    [Fact]
+    public void NewDefaults_UseCurrentSettingsWindowSize()
+    {
+        var settings = new NotchSettings();
+
+        Assert.Equal(860, settings.SettingsWindowWidth);
+        Assert.Equal(620, settings.SettingsWindowHeight);
+    }
+
+    [Fact]
     public void NewDefaults_EnableGpuGlassWithoutHidingNotchFromCapture()
     {
         var settings = new NotchSettings();
@@ -153,5 +170,70 @@ public class SettingsMigratorTests
         var (settings, _) = SettingsMigrator.Migrate(rawJson);
 
         Assert.False(settings.EnableSpotlight);
+    }
+
+    [Fact]
+    public void Migrate_Version12_AddsLastExpandedLauncherDestination()
+    {
+        const string rawJson = """
+            {
+              "SettingsVersion": 12
+            }
+            """;
+
+        var (settings, migrated) = SettingsMigrator.Migrate(rawJson);
+
+        Assert.True(migrated);
+        Assert.Equal(SettingsMigrator.CurrentVersion, settings.SettingsVersion);
+        Assert.Equal("Home", settings.LastExpandedLauncherDestination);
+    }
+
+    [Fact]
+    public void Migrate_Version12_PreservesExistingLastExpandedLauncherDestination()
+    {
+        const string rawJson = """
+            {
+              "SettingsVersion": 12,
+              "LastExpandedLauncherDestination": "Display"
+            }
+            """;
+
+        var (settings, _) = SettingsMigrator.Migrate(rawJson);
+
+        Assert.Equal("Display", settings.LastExpandedLauncherDestination);
+    }
+
+    [Fact]
+    public void Migrate_Version13_AddsSettingsWindowSize()
+    {
+        const string rawJson = """
+            {
+              "SettingsVersion": 13
+            }
+            """;
+
+        var (settings, migrated) = SettingsMigrator.Migrate(rawJson);
+
+        Assert.True(migrated);
+        Assert.Equal(SettingsMigrator.CurrentVersion, settings.SettingsVersion);
+        Assert.Equal(860, settings.SettingsWindowWidth);
+        Assert.Equal(620, settings.SettingsWindowHeight);
+    }
+
+    [Fact]
+    public void Migrate_Version13_PreservesExistingSettingsWindowSize()
+    {
+        const string rawJson = """
+            {
+              "SettingsVersion": 13,
+              "SettingsWindowWidth": 1040,
+              "SettingsWindowHeight": 760
+            }
+            """;
+
+        var (settings, _) = SettingsMigrator.Migrate(rawJson);
+
+        Assert.Equal(1040, settings.SettingsWindowWidth);
+        Assert.Equal(760, settings.SettingsWindowHeight);
     }
 }

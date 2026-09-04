@@ -267,7 +267,7 @@ public partial class MainWindow
 
         AnimateAudioViewSwap(
             AudioContent, SecondaryContent,
-            fromW, fromH, _expandedWidth, _expandedHeight,
+            fromW, fromH, _expandedWidth, SecondaryViewHeight,
             prepIncoming: () =>
             {
                 EnableKeyboardInput();
@@ -278,7 +278,7 @@ public partial class MainWindow
             {
                 SecondaryContent.Width = double.NaN;
                 SecondaryContent.UpdateLayout();
-                RestoreExpandedWindowSize();
+                ResizeHostWindowHeight(SecondaryViewHeight);
                 ResetCameraSectionLayoutInstant();
             });
     }
@@ -326,9 +326,12 @@ public partial class MainWindow
 
         bool outIsAudio = ReferenceEquals(outgoing, AudioContent);
         bool inIsAudio = ReferenceEquals(incoming, AudioContent);
-        bool resetIncomingAutoSize = !inIsAudio
-            && !ReferenceEquals(incoming, ExpandedContent)
-            && notchFromW > notchToW + 0.5;
+        bool resetIncomingAutoSize = ShouldResetIncomingAutoSize(
+            inIsAudio,
+            ReferenceEquals(incoming, PiggyBankContent),
+            ReferenceEquals(incoming, ExpandedContent),
+            notchFromW,
+            notchToW);
 
         // Keep category roots geometrically stable during the view swap. The notch
         // itself still resizes, but whole-view scale/slide/alignment changes caused
@@ -389,9 +392,21 @@ public partial class MainWindow
                 RestorePrivacyDotVisibility();
 
             onComplete?.Invoke();
+            RememberActiveHoverLauncherDestination();
         };
         incoming.BeginAnimation(OpacityProperty, fadeIn);
     }
+
+    internal static bool ShouldResetIncomingAutoSize(
+        bool incomingIsAudio,
+        bool incomingIsPiggyBank,
+        bool incomingIsExpandedContent,
+        double notchFromWidth,
+        double notchToWidth)
+        => !incomingIsAudio
+           && !incomingIsPiggyBank
+           && !incomingIsExpandedContent
+           && notchFromWidth > notchToWidth + 0.5;
 
     private void SettleAudioNotchToFit()
         => AnimateAudioNotchHeight(_audioViewHeight, new Duration(TimeSpan.FromMilliseconds(300)), _easeExpOut6);

@@ -91,6 +91,7 @@ public partial class MainWindow
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         var iconHost = new Viewbox
         {
@@ -141,6 +142,45 @@ public partial class MainWindow
         Grid.SetColumn(allLink, 2);
         grid.Children.Add(allLink);
 
+        var sleepDisplays = new Border
+        {
+            Width = 30,
+            Height = 30,
+            CornerRadius = new CornerRadius(7),
+            Background = Brushes.Transparent,
+            BorderBrush = AudioComboBorder,
+            BorderThickness = new Thickness(1),
+            Cursor = Cursors.Hand,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+            Child = new TextBlock
+            {
+                Text = "☾",
+                Foreground = AudioMuted,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                FontFamily = AudioFont,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, -1, 0, 0)
+            },
+            ToolTip = "Sleep monitors"
+        };
+        sleepDisplays.MouseEnter += (_, _) => sleepDisplays.Background = AudioComboHover;
+        sleepDisplays.MouseLeave += (_, _) => sleepDisplays.Background = Brushes.Transparent;
+        sleepDisplays.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            if (_isAnimating) return;
+
+            // Never broadcast SC_MONITORPOWER synchronously on the WPF dispatcher.
+            // A slow top-level window can otherwise make V-Notch appear frozen
+            // after the displays wake. The Win32 call is also bounded by timeout.
+            Task.Run(Win32Interop.SleepDisplays).SafeFireAndForget("DISPLAY-SLEEP");
+        };
+        Grid.SetColumn(sleepDisplays, 3);
+        grid.Children.Add(sleepDisplays);
+
         var refresh = new Border
         {
             Width = 30,
@@ -171,7 +211,7 @@ public partial class MainWindow
             e.Handled = true;
             if (!_isAnimating) _ = _displayViewModel.RefreshAsync();
         };
-        Grid.SetColumn(refresh, 3);
+        Grid.SetColumn(refresh, 4);
         grid.Children.Add(refresh);
 
         return grid;
@@ -194,6 +234,10 @@ public partial class MainWindow
             return;
         }
 
+        // Refresh publishes Clear/Add collection changes while IsLoading is still
+        // true. Rebuilding and animating the notch for every intermediate item can
+        // gate all navigation several times. Rebuild once when the refresh settles.
+        if (_displayViewModel.IsLoading) return;
         RebuildDisplayMonitorSections();
         RequestDisplayFitRecalculation();
     }
@@ -206,11 +250,17 @@ public partial class MainWindow
             return;
         }
 
-        if (e.PropertyName == nameof(DisplayMonitorsViewModel.StatusText) ||
-            e.PropertyName == nameof(DisplayMonitorsViewModel.IsLoading))
+        if (e.PropertyName == nameof(DisplayMonitorsViewModel.StatusText))
         {
             UpdateDisplayStatusVisual();
-            RequestDisplayFitRecalculation();
+            if (!_displayViewModel.IsLoading)
+                RequestDisplayFitRecalculation();
+        }
+        else if (e.PropertyName == nameof(DisplayMonitorsViewModel.IsLoading))
+        {
+            if (!_displayViewModel.IsLoading)
+                RebuildDisplayMonitorSections();
+            UpdateDisplayStatusVisual();
         }
         else if (e.PropertyName == nameof(DisplayMonitorsViewModel.IsAllMonitorsLinked))
         {
@@ -310,7 +360,7 @@ public partial class MainWindow
         var localLink = CreateDisplayToggle(
             "Link",
             row.IsLinkEnabled,
-            enabled => row.IsLinkEnabled = enabled,
+            enabled => _displayViewModel.SetMonitorLink(row, enabled),
             out var setLinkVisual);
         Grid.SetColumn(localLink, 1);
         header.Children.Add(localLink);
@@ -667,6 +717,15 @@ public partial class MainWindow
 
     private void UpdateDisplayAllLinkVisual()
         => _displayAllLinkVisual?.Invoke(_displayViewModel.IsAllMonitorsLinked);
+
+    private void DisplayViewModel_LinkStateChanged(bool allMonitorsLinked, IReadOnlyCollection<string> linkedMonitorIds)
+    {
+        _settings.DisplayAllMonitorsLinked = allMonitorsLinked;
+        _settings.DisplayLinkedMonitorIds = linkedMonitorIds
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
+        _settingsService.Save(_settings);
+    }
 
     private void UpdateDisplayStatusVisual()
     {

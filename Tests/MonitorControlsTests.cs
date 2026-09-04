@@ -199,6 +199,15 @@ public sealed class MonitorControlsTests
         Assert.True(Enum.IsDefined(NotchView.DisplayMonitors));
     }
 
+    [Fact]
+    public void DisplaySleepUsesWindowsMonitorPowerCommand()
+    {
+        Assert.Equal(0x0112u, Win32Interop.WM_SYSCOMMAND);
+        Assert.Equal(0xF170, Win32Interop.SC_MONITORPOWER);
+        Assert.Equal(0x0002u, Win32Interop.SMTO_ABORTIFHUNG);
+        Assert.InRange(Win32Interop.MonitorPowerTimeoutMs, 1u, 1000u);
+    }
+
     private static MonitorLinkValues Monitor(
         string id,
         double brightness,

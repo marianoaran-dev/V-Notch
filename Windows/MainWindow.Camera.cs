@@ -341,13 +341,16 @@ public partial class MainWindow
         CameraSectionScale.ScaleX = 1.0;
         CameraSectionScale.ScaleY = 1.0;
 
+        // File Shelf now has a deliberately taller resting height. Resetting the
+        // camera section must return to the active view's normal height, not the
+        // primary/Home height, otherwise the shelf visibly shrinks after opening.
+        double restingNotchHeight = _isSecondaryView ? SecondaryViewHeight : _expandedHeight;
         double currentNotchH = NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : NotchBorder.Height;
-        if (wasCameraSectionAnimating || currentNotchH > _expandedHeight + 1)
+        if (wasCameraSectionAnimating || currentNotchH > restingNotchHeight + 1)
         {
             NotchBorder.BeginAnimation(HeightProperty, null);
-            NotchBorder.Height = _expandedHeight;
-            double windowHeightDip = _expandedHeight + 80;
-            _overlayWindow.ResizeHeight(windowHeightDip);
+            NotchBorder.Height = restingNotchHeight;
+            ResizeHostWindowHeight(restingNotchHeight);
         }
 
         FileShelf.BeginAnimation(OpacityProperty, null);

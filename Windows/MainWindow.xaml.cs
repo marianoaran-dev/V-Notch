@@ -38,6 +38,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _updateCheckTimer;
     private readonly ZOrderManager _zOrderManager;
     private readonly DispatcherTimer _hoverCollapseTimer;
+    private readonly DispatcherTimer _collapseRecoveryTimer;
     private readonly DispatcherTimer _hoverThumbnailDelayTimer;
     private readonly DispatcherTimer _compactThumbnailHoverLeaveTimer;
 
@@ -244,6 +245,12 @@ public partial class MainWindow : Window
         AnimationPrimitives.ApplyFpsToTree(this);
         _settingsService = (SettingsService)settingsService;
         _settings = _settingsService.Load();
+        _lastExpandedViewBeforeCollapse = ParsePersistedHoverLauncherDestination(
+            _settings.LastExpandedLauncherDestination);
+        _displayViewModel.LoadLinkState(
+            _settings.DisplayAllMonitorsLinked,
+            _settings.DisplayLinkedMonitorIds);
+        _displayViewModel.LinkStateChanged += DisplayViewModel_LinkStateChanged;
         _notchManager = new NotchManager(this, _settings);
         _mediaService = (MediaDetectionService)mediaService;
         _updateService = updateService;
@@ -353,20 +360,24 @@ public partial class MainWindow : Window
         _hoverCollapseTimer.Tick += (s, e) =>
         {
             _hoverCollapseTimer.Stop();
-            if (_isDebugViewLocked || _spotlightMorphSessionActive || _spotlightMorphOwnsNotchVisibility) return;
+            if (_settings.DisableMouseLeaveAutoClose ||
+                _isDebugViewLocked || _spotlightMorphSessionActive || _spotlightMorphOwnsNotchVisibility) return;
             if (_isExpanded && !NotchWrapper.IsMouseOver)
             {
                 if (DateTime.UtcNow < _suppressHoverCollapseUntilUtc)
                 {
+                    var remaining = _suppressHoverCollapseUntilUtc - DateTime.UtcNow;
                     RuntimeLog.Log("COLLAPSE-BLOCKED",
-                        $"HoverCollapseTimer suppressed at fire time: remaining={(_suppressHoverCollapseUntilUtc - DateTime.UtcNow).TotalMilliseconds:F0}ms");
+                        $"HoverCollapseTimer reached expansion grace: remaining={remaining.TotalMilliseconds:F0}ms; rearming");
+                    _hoverCollapseTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(40, remaining.TotalMilliseconds));
+                    _hoverCollapseTimer.Start();
                     return;
                 }
 
-                if (_hwnd != IntPtr.Zero && IsCursorInsideWindow())
+                if (ShouldKeepHoverLauncherEngaged(NotchWrapper.IsMouseOver, HoverLauncherDock.IsMouseOver))
                 {
                     RuntimeLog.Log("COLLAPSE-BLOCKED",
-                        $"HoverCollapseTimer: WPF says IsMouseOver=False but cursor is inside window rect â€” suppressing");
+                        "HoverCollapseTimer: pointer is still over an interactive notch/launcher surface");
                     return;
                 }
 
@@ -384,13 +395,22 @@ public partial class MainWindow : Window
         _hoverThumbnailDelayTimer.Tick += (s, e) =>
         {
             _hoverThumbnailDelayTimer.Stop();
-            if (_settings.EnableHoverExpand && !_isExpanded && !_isAnimating)
-            {
-                ExpandNotch();
-            }
-            else if (!_settings.EnableHoverExpand && IsCursorInsideCompactThumbnailExitZone())
+            if (!_isExpanded && !_isAnimating && _isMusicCompactMode && IsCursorInsideCompactThumbnailExitZone())
             {
                 SetCompactThumbnailHover(true);
+            }
+        };
+
+        _collapseRecoveryTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(950)
+        };
+        _collapseRecoveryTimer.Tick += (_, _) =>
+        {
+            _collapseRecoveryTimer.Stop();
+            if (_notchState.CurrentState == NotchState.Collapsing)
+            {
+                RecoverInterruptedCollapse();
             }
         };
 
@@ -456,6 +476,7 @@ public partial class MainWindow : Window
         ApplySettings();
         ConfigureOverlayWindow();
         PositionAtTop();
+        InitialiseHoverLauncherShell();
         StartZOrderWatchdog();
         UpdateFullscreenAutoHideState(_overlayWindow.GetForegroundWindowHandle(), force: true);
 
@@ -584,6 +605,7 @@ public partial class MainWindow : Window
         _updateTimer?.Stop();
         _updateCheckTimer?.Stop();
         _hoverCollapseTimer?.Stop();
+        _hoverExpandTimer?.Stop();
         _hoverThumbnailDelayTimer?.Stop();
         _compactThumbnailHoverLeaveTimer?.Stop();
         _desktopDemotionDelayTimer?.Stop();
@@ -667,6 +689,7 @@ public partial class MainWindow : Window
         }
         else
         {
+            HideHoverLauncher(immediate: true);
             AnimateNotchFade(toOpacity: 0, durationMs: 220, easeOut: false);
             AnimateNotchSlide(toY: -slideDistance, durationMs: 250, easeOut: false, onComplete: () =>
             {
@@ -838,6 +861,7 @@ public partial class MainWindow : Window
 
         // Initialize the global hover/top-edge bounds at startup as well as after
         _notchManager.UpdatePosition();
+        SyncHoverDetectionBoundsToPhysicalNotch();
 
         if (_hwnd != IntPtr.Zero)
         {
@@ -1126,14 +1150,35 @@ public partial class MainWindow : Window
 
         settingsWindow.AnimatedClosing += (s, e) =>
         {
+            RetractAfterSettingsClose();
         };
 
         settingsWindow.Closed += (s, e) =>
         {
+            RetractAfterSettingsClose();
             PlayNotchReturnBounce();
         };
 
         settingsWindow.ShowDialog();
+    }
+
+    private void RetractAfterSettingsClose()
+    {
+        CancelHoverExpand();
+        _hoverCollapseTimer.Stop();
+        HideHoverLauncher(immediate: true);
+
+        if (_notchState.IsTransitioning &&
+            !_isAnimating &&
+            _notchState.TimeSinceLastTransition >= TimeSpan.FromMilliseconds(950))
+        {
+            _notchState.RecoverFromStuckTransition();
+        }
+
+        if (_isExpanded && !_isAnimating)
+        {
+            CollapseNotch();
+        }
     }
 
     private void ApplySettings(bool animatePulse = false)
@@ -1153,6 +1198,12 @@ public partial class MainWindow : Window
 
         _hoverCollapseTimer.Interval = TimeSpan.FromMilliseconds(_settings.HoverCollapseDelay);
         _hoverThumbnailDelayTimer.Interval = TimeSpan.FromMilliseconds(_settings.HoverExpandDelay);
+        if (_hoverExpandTimer != null)
+            _hoverExpandTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(0, _settings.HoverExpandDelay));
+        if (!_settings.EnableHoverExpand)
+            CancelHoverExpand();
+        if (_settings.DisableMouseLeaveAutoClose)
+            _hoverCollapseTimer.Stop();
 
         ApplyIdleAutoHideSettings();
 
@@ -1182,6 +1233,9 @@ public partial class MainWindow : Window
         _modeTransitionPending = false;
 
         ApplyDynamicIslandLayout(animateTransition: willModeTransition);
+        UpdateHoverLauncherPlacement();
+        if (_hwnd != IntPtr.Zero)
+            SyncHoverDetectionBoundsToPhysicalNotch();
 
         if (!_isExpanded && !_isAnimating)
         {
@@ -1681,6 +1735,8 @@ public partial class MainWindow : Window
         }
         else
         {
+            _pendingHoverLauncherDestination = ResolveIdleExpandDestination();
+            UpdateHoverLauncherActiveState();
             ExpandNotch();
         }
     }
@@ -1694,56 +1750,49 @@ public partial class MainWindow : Window
 
     private void NotchWrapper_MouseLeave(object sender, MouseEventArgs e)
     {
+        CancelHoverExpand();
         _hoverThumbnailDelayTimer.Stop();
-        if (_spotlightMorphSessionActive || _spotlightMorphOwnsNotchVisibility) return;
+        RequestHoverCollapseAfterPointerExit("MouseLeave");
+    }
 
-        if (_settings.DisableMouseLeaveAutoClose)
+    private void RequestHoverCollapseAfterPointerExit(string source)
+    {
+        if (_spotlightMorphSessionActive || _spotlightMorphOwnsNotchVisibility || _isDebugViewLocked) return;
+
+        if (!_isExpanded)
         {
-            if (!_isExpanded)
-            {
-                AnimateNotchHover(false);
-            }
+            ScheduleHoverLauncherHide();
             return;
         }
 
-        if (_isExpanded && !_isAnimating && !_isSecondaryView)
-        {
-            if (DateTime.UtcNow < _suppressHoverCollapseUntilUtc)
-            {
-                RuntimeLog.Log("COLLAPSE-BLOCKED",
-                    $"MouseLeave suppressed during grace period: remaining={(_suppressHoverCollapseUntilUtc - DateTime.UtcNow).TotalMilliseconds:F0}ms");
-                return;
-            }
+        if (_settings.DisableMouseLeaveAutoClose || _isAnimating) return;
+        if (ShouldKeepHoverLauncherEngaged(NotchWrapper.IsMouseOver, HoverLauncherDock.IsMouseOver)) return;
 
-            if (IsCursorInsideWindow())
-            {
-                RuntimeLog.Log("COLLAPSE-BLOCKED",
-                    $"MouseLeave: WPF fired leave but cursor still inside window rect â€” ignoring");
-                return;
-            }
+        double delay = ResolveHoverCollapseTimerDelayMs(
+            _settings.HoverCollapseDelay,
+            _suppressHoverCollapseUntilUtc,
+            DateTime.UtcNow);
 
-            RuntimeLog.Log("COLLAPSE-HOVER",
-                $"MouseLeave -> starting hoverCollapseTimer: interval={_hoverCollapseTimer.Interval.TotalMilliseconds}ms " +
-                $"isExpanded={_isExpanded} isMusicExpanded={_isMusicExpanded}");
-            _hoverCollapseTimer.Start();
-        }
-        else if (!_isExpanded)
-        {
-            AnimateNotchHover(false);
-        }
+        _hoverCollapseTimer.Stop();
+        _hoverCollapseTimer.Interval = TimeSpan.FromMilliseconds(delay);
+        RuntimeLog.Log("COLLAPSE-HOVER",
+            $"{source} -> starting hoverCollapseTimer: interval={_hoverCollapseTimer.Interval.TotalMilliseconds:F0}ms " +
+            $"isExpanded={_isExpanded} isMusicExpanded={_isMusicExpanded}");
+        _hoverCollapseTimer.Start();
     }
 
     private void QueueHoverExpand()
     {
-        if (_settings.EnableHoverExpand && !_isExpanded && !_isAnimating)
+        if (!_isExpanded && !_isAnimating)
         {
-            _hoverThumbnailDelayTimer.Stop();
-            _hoverThumbnailDelayTimer.Start();
+            ShowHoverLauncher();
+            ArmHoverExpand();
         }
     }
 
     private void HoverService_HoverEnter(object? sender, EventArgs e)
     {
+        RuntimeLog.Log("HOVER-EXPAND", $"HoverEnter setting={_settings.EnableHoverExpand} expanded={_isExpanded} animating={_isAnimating}");
         Dispatcher.BeginInvoke(new Action(QueueHoverExpand));
     }
 
@@ -1751,21 +1800,9 @@ public partial class MainWindow : Window
     {
         Dispatcher.BeginInvoke(new Action(() =>
         {
+            CancelHoverExpand();
             _hoverThumbnailDelayTimer.Stop();
-            if (_spotlightMorphSessionActive || _spotlightMorphOwnsNotchVisibility) return;
-            if (_settings.DisableMouseLeaveAutoClose) return;
-            if (_isExpanded && !_isAnimating && !_isSecondaryView)
-            {
-                if (DateTime.UtcNow < _suppressHoverCollapseUntilUtc)
-                {
-                    RuntimeLog.Log("COLLAPSE-BLOCKED",
-                        $"HoverService_HoverLeave suppressed during grace period: remaining={(_suppressHoverCollapseUntilUtc - DateTime.UtcNow).TotalMilliseconds:F0}ms");
-                    return;
-                }
-                RuntimeLog.Log("COLLAPSE-HOVER",
-                    $"HoverService_HoverLeave -> starting hoverCollapseTimer: interval={_hoverCollapseTimer.Interval.TotalMilliseconds}ms");
-                _hoverCollapseTimer.Start();
-            }
+            RequestHoverCollapseAfterPointerExit("HoverService_HoverLeave");
         }));
     }
 
@@ -2039,6 +2076,8 @@ public partial class MainWindow : Window
     private void UpdateTimer_Tick(object? sender, EventArgs e)
     {
         if (_isMusicExpanded) SyncVolumeFromActiveSession();
+        RefreshPiggyShellTooltips();
+        RefreshPiggyBankIfStale();
         EnsureTopmost();
     }
 
@@ -2364,6 +2403,8 @@ public partial class MainWindow : Window
         while (current != null && current != this)
         {
             if (ReferenceEquals(current, NotchWrapper) ||
+                ReferenceEquals(current, HoverLauncherDock) ||
+                ReferenceEquals(current, QuotaGlancePanel) ||
                 ReferenceEquals(current, NavIconsPanel) ||
                 ReferenceEquals(current, AudioOverlay) ||
                 ReferenceEquals(current, CompactHoverInfo) ||

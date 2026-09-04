@@ -156,6 +156,20 @@ public class NotchStateManagerTests
     }
 
     [Fact]
+    public void RecoverFromStuckTransition_CollapsingReturnsToCollapsed()
+    {
+        Assert.True(_sm.TryTransitionTo(NotchState.Expanding));
+        Assert.True(_sm.TryTransitionTo(NotchState.Expanded));
+        Assert.True(_sm.TryTransitionTo(NotchState.Collapsing));
+
+        _sm.RecoverFromStuckTransition();
+
+        Assert.Equal(NotchState.Collapsed, _sm.CurrentState);
+        Assert.False(_sm.IsTransitioning);
+        Assert.True(_sm.TryTransitionTo(NotchState.Expanding));
+    }
+
+    [Fact]
     public void IsExpanded_TrueForExpanded()
     {
         _sm.TryTransitionTo(NotchState.Expanding);

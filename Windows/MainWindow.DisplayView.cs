@@ -176,7 +176,7 @@ public partial class MainWindow
             fromWidth,
             fromHeight,
             _expandedWidth,
-            _expandedHeight,
+            SecondaryViewHeight,
             prepIncoming: () =>
             {
                 SecondaryContent.Width = _expandedWidth
@@ -187,7 +187,7 @@ public partial class MainWindow
             {
                 SecondaryContent.Width = double.NaN;
                 SecondaryContent.UpdateLayout();
-                RestoreExpandedWindowSize();
+                ResizeHostWindowHeight(SecondaryViewHeight);
                 ResetCameraSectionLayoutInstant();
             });
     }

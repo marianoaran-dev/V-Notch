@@ -246,6 +246,46 @@ public class SettingsService : ISettingsService
     {
         bool changed = false;
 
+        string[] validLauncherDestinations =
+        [
+            "Home",
+            "FileShelf",
+            "Timer",
+            "Audio",
+            "Display",
+            "PiggyBank"
+        ];
+
+        string? normalizedLauncherDestination = validLauncherDestinations.FirstOrDefault(
+            destination => string.Equals(
+                destination,
+                settings.LastExpandedLauncherDestination,
+                StringComparison.OrdinalIgnoreCase));
+        normalizedLauncherDestination ??= "Home";
+        if (!string.Equals(
+                settings.LastExpandedLauncherDestination,
+                normalizedLauncherDestination,
+                StringComparison.Ordinal))
+        {
+            settings.LastExpandedLauncherDestination = normalizedLauncherDestination;
+            changed = true;
+        }
+
+        // The quota-only compact shell introduced in the floating-controls work
+        // needs enough room for both quota rings. Migrate older 230x34-era values
+        // once, then leave the new compact dimensions fully adjustable in Settings.
+        if (settings.Width < 340)
+        {
+            settings.Width = 420;
+            changed = true;
+        }
+
+        if (settings.Height < 52)
+        {
+            settings.Height = 52;
+            changed = true;
+        }
+
         if (settings.DynamicIslandWidth < 100)
         {
             settings.DynamicIslandWidth = (int)Math.Round(settings.Width * 1.12 / 10.0) * 10;
@@ -255,6 +295,30 @@ public class SettingsService : ISettingsService
         if (settings.DynamicIslandHeight < 24)
         {
             settings.DynamicIslandHeight = 40;
+            changed = true;
+        }
+
+        settings.DisplayLinkedMonitorIds ??= new List<string>();
+        settings.PiggyFiveHourAlertedThresholds ??= new List<int>();
+        settings.PiggyWeeklyAlertedThresholds ??= new List<int>();
+        settings.PiggyBankedResetAlertedKeys ??= new List<string>();
+        settings.PiggyCachedBankedResets ??= new List<PiggyBankedReset>();
+        if (settings.PiggyCachedBankedResetCount < 0)
+        {
+            settings.PiggyCachedBankedResetCount = 0;
+            changed = true;
+        }
+
+        int customPiggyAlertPercent = Math.Clamp(settings.PiggyCustomAlertPercent, 1, 99);
+        if (customPiggyAlertPercent != settings.PiggyCustomAlertPercent)
+        {
+            settings.PiggyCustomAlertPercent = customPiggyAlertPercent;
+            changed = true;
+        }
+
+        if (settings.PiggyBankedResetReminderHours is not (1 or 6 or 24 or 48))
+        {
+            settings.PiggyBankedResetReminderHours = 48;
             changed = true;
         }
 

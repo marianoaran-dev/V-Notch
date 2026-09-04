@@ -11,6 +11,11 @@ namespace VNotch;
 
 public partial class MainWindow
 {
+    internal static double CalculateSecondaryViewHeight(double primaryExpandedHeight)
+        => primaryExpandedHeight * 2.0;
+
+    private double SecondaryViewHeight => CalculateSecondaryViewHeight(_expandedHeight);
+
     private void NotchWrapper_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (_isAudioView || _isDisplayView || _isPiggyBankView) return;
@@ -171,13 +176,17 @@ public partial class MainWindow
         var fromWidth = NotchBorder.ActualWidth > 0 ? NotchBorder.ActualWidth : _expandedWidth;
         var fromHeight = NotchBorder.ActualHeight > 0 ? NotchBorder.ActualHeight : _expandedHeight;
 
+        // File Shelf is taller than Home, so grow the transparent host before
+        // the notch animation moves the floating launcher below the Home bounds.
+        ResizeHostWindowHeight(SecondaryViewHeight);
+
         AnimateAudioViewSwap(
             ExpandedContent,
             SecondaryContent,
             fromWidth,
             fromHeight,
             _expandedWidth,
-            _expandedHeight,
+            SecondaryViewHeight,
             prepIncoming: () =>
             {
                 EnableKeyboardInput();

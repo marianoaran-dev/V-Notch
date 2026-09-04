@@ -28,6 +28,23 @@ internal static class Win32Interop
     public static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool ReleaseCapture();
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SendMessageTimeout(
+        IntPtr hWnd,
+        uint msg,
+        IntPtr wParam,
+        IntPtr lParam,
+        uint flags,
+        uint timeout,
+        out UIntPtr result);
+
+    [DllImport("user32.dll")]
     public static extern short GetAsyncKeyState(int vKey);
 
     [DllImport("user32.dll")]
@@ -146,6 +163,22 @@ internal static class Win32Interop
     public const int SM_YVIRTUALSCREEN = 77;
     public const int SM_CXVIRTUALSCREEN = 78;
     public const int SM_CYVIRTUALSCREEN = 79;
+    public const uint WM_SYSCOMMAND = 0x0112;
+    public const uint WM_NCLBUTTONDOWN = 0x00A1;
+    public const int SC_MONITORPOWER = 0xF170;
+    public const uint SMTO_ABORTIFHUNG = 0x0002;
+    public const uint MonitorPowerTimeoutMs = 350;
+    public static readonly IntPtr HWND_BROADCAST = new(0xFFFF);
+
+    public static bool SleepDisplays()
+        => SendMessageTimeout(
+            HWND_BROADCAST,
+            WM_SYSCOMMAND,
+            new IntPtr(SC_MONITORPOWER),
+            new IntPtr(2),
+            SMTO_ABORTIFHUNG,
+            MonitorPowerTimeoutMs,
+            out _) != IntPtr.Zero;
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -124,61 +124,50 @@ public partial class MainWindow
         }
     }
 
-    private DateTime _lastOutsideClickTime = DateTime.MinValue;
-
     private void GlobalMouseHook_MouseLeftButtonDown(object? sender, InputMonitorService.POINT pt)
     {
         Dispatcher.Invoke(() =>
         {
-            // Spotlight temporarily owns the notch surface. Clicks inside its
-            // window are outside MainWindow by definition and must not collapse
-            // the hidden source state underneath the morph.
-            if (_spotlightMorphSessionActive || _spotlightMorphOwnsNotchVisibility) return;
-
-            if ((_isExpanded || _isMusicExpanded) && !_isAnimating)
+            bool pointInsideNotchVisual = IsScreenPointInsideNotchVisual(pt);
+            if (ShouldCollapseOnOutsideClick(
+                    pointInsideNotchVisual,
+                    _isExpanded,
+                    _isMusicExpanded,
+                    _isAnimating,
+                    _spotlightMorphSessionActive,
+                    _spotlightMorphOwnsNotchVisibility))
             {
                 IntPtr hWndAtPoint = WindowFromPoint(new POINT { X = pt.x, Y = pt.y });
 
-                if (!IsScreenPointInsideNotchVisual(pt))
+                if (DateTime.UtcNow < _suppressOutsideClickUntilUtc)
                 {
-                    if (DateTime.UtcNow < _suppressOutsideClickUntilUtc)
-                    {
-                        RuntimeLog.Log("COLLAPSE-BLOCKED",
-                            $"Suppressed during thumbnail animation grace: pt=({pt.x},{pt.y}) " +
-                            $"hWndAtPoint=0x{hWndAtPoint:X} remaining={((_suppressOutsideClickUntilUtc - DateTime.UtcNow).TotalMilliseconds):F0}ms");
-                        return;
-                    }
-
-                    RuntimeLog.Log("COLLAPSE-TRIGGER",
-                        $"Outside click detected: pt=({pt.x},{pt.y}) hWndAtPoint=0x{hWndAtPoint:X} _hwnd=0x{_hwnd:X} " +
-                        $"isExpanded={_isExpanded} isMusicExpanded={_isMusicExpanded} isSecondary={_isSecondaryView} " +
-                        $"isAnimating={_isAnimating}");
-
-                    if (_isSecondaryView)
-                    {
-                        var now = DateTime.Now;
-                        double doubleClickTime = GetDoubleClickTime();
-
-                        if ((now - _lastOutsideClickTime).TotalMilliseconds < doubleClickTime)
-                        {
-                            RuntimeLog.Log("COLLAPSE-TRIGGER", "Secondary view double-click -> CollapseAll");
-                            CollapseAll();
-                            _lastOutsideClickTime = DateTime.MinValue;
-                        }
-                        else
-                        {
-                            _lastOutsideClickTime = now;
-                        }
-                    }
-                    else
-                    {
-                        RuntimeLog.Log("COLLAPSE-TRIGGER", "Normal view single outside click -> CollapseAll");
-                        CollapseAll();
-                    }
+                    RuntimeLog.Log("COLLAPSE-BLOCKED",
+                        $"Suppressed during thumbnail animation grace: pt=({pt.x},{pt.y}) " +
+                        $"hWndAtPoint=0x{hWndAtPoint:X} remaining={((_suppressOutsideClickUntilUtc - DateTime.UtcNow).TotalMilliseconds):F0}ms");
+                    return;
                 }
+
+                RuntimeLog.Log("COLLAPSE-TRIGGER",
+                    $"Outside click -> CollapseAll: pt=({pt.x},{pt.y}) hWndAtPoint=0x{hWndAtPoint:X} _hwnd=0x{_hwnd:X} " +
+                    $"isExpanded={_isExpanded} isMusicExpanded={_isMusicExpanded} isSecondary={_isSecondaryView} " +
+                    $"isTimer={_isTimerView} isAudio={_isAudioView} isDisplay={_isDisplayView} isPiggy={_isPiggyBankView}");
+                CollapseAll();
             }
         });
     }
+
+    internal static bool ShouldCollapseOnOutsideClick(
+        bool pointInsideNotchVisual,
+        bool isExpanded,
+        bool isMusicExpanded,
+        bool isAnimating,
+        bool spotlightMorphSessionActive,
+        bool spotlightMorphOwnsNotchVisibility) =>
+        !pointInsideNotchVisual
+        && (isExpanded || isMusicExpanded)
+        && !isAnimating
+        && !spotlightMorphSessionActive
+        && !spotlightMorphOwnsNotchVisibility;
 
     private bool IsChildWindow(IntPtr parent, IntPtr child)
     {
@@ -215,6 +204,15 @@ public partial class MainWindow
                 var piggyBounds = PiggyBankContent.TransformToAncestor(this)
                     .TransformBounds(new Rect(0, 0, PiggyBankContent.ActualWidth, PiggyBankContent.ActualHeight));
                 bounds.Union(piggyBounds);
+            }
+
+            if (HoverLauncherDock != null &&
+                HoverLauncherDock.Visibility == Visibility.Visible &&
+                HoverLauncherDock.ActualWidth > 0 && HoverLauncherDock.ActualHeight > 0)
+            {
+                var launcherBounds = HoverLauncherDock.TransformToAncestor(this)
+                    .TransformBounds(new Rect(0, 0, HoverLauncherDock.ActualWidth, HoverLauncherDock.ActualHeight));
+                bounds.Union(launcherBounds);
             }
 
             var dpi = VisualTreeHelper.GetDpi(this);

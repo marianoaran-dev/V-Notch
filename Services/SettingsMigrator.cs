@@ -9,7 +9,7 @@ namespace VNotch.Services;
 public static class SettingsMigrator
 {
 
-    public const int CurrentVersion = 12;
+    public const int CurrentVersion = 14;
 
     private static readonly IReadOnlyDictionary<int, Func<JsonObject, JsonObject>> _migrations =
         new Dictionary<int, Func<JsonObject, JsonObject>>
@@ -125,6 +125,26 @@ public static class SettingsMigrator
                 if (!root.ContainsKey(nameof(NotchSettings.EnableSpotlight)))
                 {
                     root[nameof(NotchSettings.EnableSpotlight)] = true;
+                }
+                return root;
+            },
+            [12] = root =>
+            {
+                if (!root.ContainsKey(nameof(NotchSettings.LastExpandedLauncherDestination)))
+                {
+                    root[nameof(NotchSettings.LastExpandedLauncherDestination)] = "Home";
+                }
+                return root;
+            },
+            [13] = root =>
+            {
+                if (!root.ContainsKey(nameof(NotchSettings.SettingsWindowWidth)))
+                {
+                    root[nameof(NotchSettings.SettingsWindowWidth)] = 860;
+                }
+                if (!root.ContainsKey(nameof(NotchSettings.SettingsWindowHeight)))
+                {
+                    root[nameof(NotchSettings.SettingsWindowHeight)] = 620;
                 }
                 return root;
             },

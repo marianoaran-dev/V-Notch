@@ -5,12 +5,16 @@
         Title="V-Notch Settings"
         Width="860"
         Height="620"
+        MinWidth="720"
+        MinHeight="500"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize"
+        ResizeMode="CanResize"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
         Loaded="Window_Loaded"
+        PreviewMouseLeftButtonDown="Window_PreviewMouseLeftButtonDown"
+        PreviewMouseMove="Window_PreviewMouseMove"
         FocusManager.FocusedElement="{Binding ElementName=MainShell}">
 
     <Window.Resources>
@@ -945,9 +949,9 @@
                                                 <controls:ElasticSlider x:Name="WidthSlider"
                                                         Label="Width" Unit=" px"
                                                         Description="How wide the compact notch should sit on screen."
-                                                        Minimum="100"
-                                                        Maximum="400"
-                                                        Value="200"
+                                                        Minimum="340"
+                                                        Maximum="600"
+                                                        Value="420"
                                                         TickFrequency="10"
                                                         IsSnapToTickEnabled="True"
                                                         ValueChanged="WidthSlider_ValueChanged"/>
@@ -964,9 +968,9 @@
                                                 <controls:ElasticSlider x:Name="HeightSlider"
                                                         Label="Height" Unit=" px"
                                                         Description="Controls the compact profile thickness."
-                                                        Minimum="20"
-                                                        Maximum="50"
-                                                        Value="32"
+                                                        Minimum="52"
+                                                        Maximum="80"
+                                                        Value="52"
                                                         TickFrequency="2"
                                                         IsSnapToTickEnabled="True"
                                                         ValueChanged="HeightSlider_ValueChanged"/>
@@ -1135,7 +1139,8 @@
 
                                         <Border Style="{StaticResource SettingRowBorder}">
                                             <StackPanel>
-                                                <CheckBox x:Name="ReopenLastViewCheck" x:Uid="reopenLastView" Content="Reopen last view on expand"/>
+                                                <CheckBox x:Name="ReopenLastViewCheck" x:Uid="reopenLastView" Content="Reopen last view on expand"
+                                                          Checked="ReopenLastViewCheck_Changed" Unchecked="ReopenLastViewCheck_Changed"/>
                                                 <TextBlock x:Name="ReopenLastViewHint" Text="Restore the view that was open before the last collapse the next time the notch expands."
                                                            Style="{StaticResource SettingHintText}"
                                                            Margin="0,3,0,0"/>
@@ -2186,6 +2191,24 @@
                             Click="Save_Click"/>
                 </Grid>
             </Border>
+
+            <Grid Grid.RowSpan="3"
+                  Width="24" Height="24"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Bottom"
+                  Margin="0,0,3,3"
+                  Panel.ZIndex="2000">
+                <Path Data="M5,19 L19,5 M11,19 L19,11 M17,19 L19,17"
+                      Stroke="#66FFFFFF"
+                      StrokeThickness="1.4"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      IsHitTestVisible="False"/>
+                <Thumb x:Name="SettingsResizeGrip"
+                       Cursor="SizeNWSE"
+                       Background="Transparent"
+                       DragDelta="SettingsResizeGrip_DragDelta"/>
+            </Grid>
         </Grid>
     </Border>
 </Window>

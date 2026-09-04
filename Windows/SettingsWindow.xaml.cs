@@ -37,6 +37,17 @@ public partial class SettingsWindow : Window
     private bool _gpuRefractionConfigured;
     private double _lastAppliedDpiScale = 1.0;
     private IntPtr _hwnd = IntPtr.Zero;
+    private HwndSource? _windowSource;
+
+    private const int ResizeBorderDip = 8;
+    private const int HtLeft = 10;
+    private const int HtRight = 11;
+    private const int HtTop = 12;
+    private const int HtTopLeft = 13;
+    private const int HtTopRight = 14;
+    private const int HtBottom = 15;
+    private const int HtBottomLeft = 16;
+    private const int HtBottomRight = 17;
 
     public event EventHandler<NotchSettings>? SettingsChanged;
     public event EventHandler? AnimatedClosing;
@@ -56,6 +67,11 @@ public partial class SettingsWindow : Window
         _bluetoothModule = bluetoothModule;
         _isSpotlightHotkeyRegistered = isSpotlightHotkeyRegistered;
         _updateService = new UpdateService();
+
+        var persistedGeometry = _settingsService.Load();
+        Width = Math.Clamp(persistedGeometry.SettingsWindowWidth, MinWidth, 1800);
+        Height = Math.Clamp(persistedGeometry.SettingsWindowHeight, MinHeight, 1200);
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
         InitializeNavigation();
         LoadSettings();
@@ -89,6 +105,66 @@ public partial class SettingsWindow : Window
         }
 
         DragMove();
+    }
+
+    private void Window_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed) return;
+
+        int hit = GetResizeHit(e.GetPosition(this));
+        if (hit == 0 || _hwnd == IntPtr.Zero) return;
+
+        e.Handled = true;
+        Win32Interop.ReleaseCapture();
+        Win32Interop.SendMessage(
+            _hwnd,
+            Win32Interop.WM_NCLBUTTONDOWN,
+            new IntPtr(hit),
+            IntPtr.Zero);
+    }
+
+    private void Window_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed) return;
+
+        Cursor = GetResizeHit(e.GetPosition(this)) switch
+        {
+            HtLeft or HtRight => Cursors.SizeWE,
+            HtTop or HtBottom => Cursors.SizeNS,
+            HtTopLeft or HtBottomRight => Cursors.SizeNWSE,
+            HtTopRight or HtBottomLeft => Cursors.SizeNESW,
+            _ => Cursors.Arrow
+        };
+    }
+
+    private void SettingsResizeGrip_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        double currentWidth = ActualWidth > 0 ? ActualWidth : Width;
+        double currentHeight = ActualHeight > 0 ? ActualHeight : Height;
+        Width = Math.Max(MinWidth, currentWidth + e.HorizontalChange);
+        Height = Math.Max(MinHeight, currentHeight + e.VerticalChange);
+    }
+
+    private int GetResizeHit(Point point)
+    {
+        if (ResizeMode == ResizeMode.NoResize) return 0;
+
+        double width = ActualWidth > 0 ? ActualWidth : Width;
+        double height = ActualHeight > 0 ? ActualHeight : Height;
+        bool left = point.X >= 0 && point.X <= ResizeBorderDip;
+        bool right = point.X <= width && point.X >= width - ResizeBorderDip;
+        bool top = point.Y >= 0 && point.Y <= ResizeBorderDip;
+        bool bottom = point.Y <= height && point.Y >= height - ResizeBorderDip;
+
+        return top && left ? HtTopLeft
+            : top && right ? HtTopRight
+            : bottom && left ? HtBottomLeft
+            : bottom && right ? HtBottomRight
+            : left ? HtLeft
+            : right ? HtRight
+            : top ? HtTop
+            : bottom ? HtBottom
+            : 0;
     }
 
     private static bool IsInteractiveElement(DependencyObject? source)
@@ -973,7 +1049,11 @@ public partial class SettingsWindow : Window
         bool enabled = HoverExpandCheck.IsChecked ?? false;
         HoverDelaySlider.IsEnabled = enabled;
         HoverDelaySlider.Opacity = enabled ? 1.0 : 0.4;
+        PushLivePreview();
     }
+
+    private void ReopenLastViewCheck_Changed(object sender, RoutedEventArgs e)
+        => PushLivePreview();
 
     private void IdleAutoHideCheck_Changed(object sender, RoutedEventArgs e)
     {
@@ -4099,11 +4179,84 @@ public partial class SettingsWindow : Window
         {
             int exStyle = Win32Interop.GetWindowLong(hwnd, Win32Interop.GWL_EXSTYLE);
             Win32Interop.SetWindowLong(hwnd, Win32Interop.GWL_EXSTYLE, exStyle | Win32Interop.WS_EX_TOOLWINDOW);
+            _windowSource = HwndSource.FromHwnd(hwnd);
+            _windowSource?.AddHook(SettingsWindowWndProc);
+        }
+    }
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        // Alt+F4 and other raw Window.Close paths should behave like Cancel,
+        // including reverting live-preview changes and running the normal close
+        // animation. The final Close() from CloseWithAnimation is allowed through
+        // because _isClosing is already true.
+        if (!_isClosing)
+        {
+            e.Cancel = true;
+            RevertLivePreviewIfNeeded();
+            CloseWithAnimation();
+            return;
+        }
+
+        base.OnClosing(e);
+    }
+
+    private IntPtr SettingsWindowWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != Win32Interop.WM_NCHITTEST || ResizeMode == ResizeMode.NoResize)
+            return IntPtr.Zero;
+
+        if (!Win32Interop.GetWindowRect(hwnd, out var rect))
+            return IntPtr.Zero;
+
+        long packed = lParam.ToInt64();
+        int x = unchecked((short)(packed & 0xFFFF));
+        int y = unchecked((short)((packed >> 16) & 0xFFFF));
+        double dpi = Math.Max(1.0, Win32Interop.GetDpiForWindow(hwnd) / 96.0);
+        int border = Math.Max(5, (int)Math.Round(ResizeBorderDip * dpi));
+
+        bool left = x >= rect.Left && x < rect.Left + border;
+        bool right = x <= rect.Right && x > rect.Right - border;
+        bool top = y >= rect.Top && y < rect.Top + border;
+        bool bottom = y <= rect.Bottom && y > rect.Bottom - border;
+
+        int hit = top && left ? HtTopLeft
+            : top && right ? HtTopRight
+            : bottom && left ? HtBottomLeft
+            : bottom && right ? HtBottomRight
+            : left ? HtLeft
+            : right ? HtRight
+            : top ? HtTop
+            : bottom ? HtBottom
+            : 0;
+
+        if (hit == 0) return IntPtr.Zero;
+        handled = true;
+        return new IntPtr(hit);
+    }
+
+    private void PersistWindowSize()
+    {
+        try
+        {
+            double width = Math.Clamp(ActualWidth > 0 ? ActualWidth : Width, MinWidth, 1800);
+            double height = Math.Clamp(ActualHeight > 0 ? ActualHeight : Height, MinHeight, 1200);
+            var durable = _settingsService.Load();
+            durable.SettingsWindowWidth = width;
+            durable.SettingsWindowHeight = height;
+            _settingsService.Save(durable);
+        }
+        catch (Exception ex)
+        {
+            RuntimeLog.Warn("SETTINGS", $"Could not persist settings window size: {ex.Message}");
         }
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        PersistWindowSize();
+        _windowSource?.RemoveHook(SettingsWindowWndProc);
+        _windowSource = null;
         base.OnClosed(e);
         CompositionTarget.Rendering -= OnGlassRegionRendering;
         _liquidGlass?.Stop();

@@ -89,4 +89,36 @@ public sealed class SpotlightMorphDeactivationTests
             isMusicExpanded: false,
             isAnimating: true));
     }
+
+    [Fact]
+    public void OutsideClick_CollapsesAnyStableExpandedViewOnFirstClick()
+    {
+        Assert.True(MainWindow.ShouldCollapseOnOutsideClick(
+            pointInsideNotchVisual: false,
+            isExpanded: true,
+            isMusicExpanded: false,
+            isAnimating: false,
+            spotlightMorphSessionActive: false,
+            spotlightMorphOwnsNotchVisibility: false));
+    }
+
+    [Fact]
+    public void OutsideClick_DoesNotCollapseInsideSurfaceOrDuringSpotlight()
+    {
+        Assert.False(MainWindow.ShouldCollapseOnOutsideClick(
+            pointInsideNotchVisual: true,
+            isExpanded: true,
+            isMusicExpanded: false,
+            isAnimating: false,
+            spotlightMorphSessionActive: false,
+            spotlightMorphOwnsNotchVisibility: false));
+
+        Assert.False(MainWindow.ShouldCollapseOnOutsideClick(
+            pointInsideNotchVisual: false,
+            isExpanded: true,
+            isMusicExpanded: false,
+            isAnimating: false,
+            spotlightMorphSessionActive: true,
+            spotlightMorphOwnsNotchVisibility: false));
+    }
 }

@@ -15,8 +15,7 @@ public partial class MainWindow
 {
 
     #region Notch Expand/Collapse
-    private enum LastExpandedView { Primary, Secondary, Timer, Audio, Display, PiggyBank }
-    private LastExpandedView _lastExpandedViewBeforeCollapse = LastExpandedView.Primary;
+    private HoverLauncherDestination _lastExpandedViewBeforeCollapse = HoverLauncherDestination.Home;
 
     private double ExpandedContentRestY => _settings.EnableDynamicIslandMode ? 8.5 : 4;
 
@@ -349,9 +348,24 @@ public partial class MainWindow
 
     private void ExpandNotch()
     {
-        if (_isAnimating || _isExpanded || _isGreetingActive) return;
+        if (_notchState.IsTransitioning &&
+            !_isAnimating &&
+            _notchState.TimeSinceLastTransition >= TimeSpan.FromMilliseconds(950))
+        {
+            _notchState.RecoverFromStuckTransition();
+        }
+
+        if (_notchState.CurrentState != NotchState.Collapsed ||
+            _isAnimating || _isExpanded || _isGreetingActive) return;
+        HoverLauncherDestination directExpandDestination = _pendingHoverLauncherDestination
+            ?? (_settings.ReopenLastViewOnExpand
+                ? _lastExpandedViewBeforeCollapse
+                : HoverLauncherDestination.Home);
+        _pendingHoverLauncherDestination = directExpandDestination;
+        bool directUtilityExpand = directExpandDestination != HoverLauncherDestination.Home;
+        if (!_notchState.TryTransitionTo(NotchState.Expanding)) return;
         _isAnimating = true;
-        _notchState.TryTransitionTo(NotchState.Expanding);
+        HideIdleShellChromeForExpansion();
 
         bool suppressCompactThumbnailMotion = IsCountdownCompletionVisualActive;
         if (suppressCompactThumbnailMotion)
@@ -480,9 +494,13 @@ public partial class MainWindow
         }
 
         ExpandedContent.BeginAnimation(OpacityProperty, null);
+        SecondaryContent.BeginAnimation(OpacityProperty, null);
+        TimerContent.BeginAnimation(OpacityProperty, null);
+        AudioContent.BeginAnimation(OpacityProperty, null);
+        DisplayContent.BeginAnimation(OpacityProperty, null);
+        PiggyBankContent.BeginAnimation(OpacityProperty, null);
         CollapsedContent.BeginAnimation(OpacityProperty, null);
         MusicCompactContent.BeginAnimation(OpacityProperty, null);
-        SecondaryContent.BeginAnimation(OpacityProperty, null);
         ResetAnimationThumbnailOverlay();
         MediaBackground.BeginAnimation(OpacityProperty, null);
         MediaBackground2.BeginAnimation(OpacityProperty, null);
@@ -494,11 +512,134 @@ public partial class MainWindow
         MediaBackground.Opacity = 0;
         MediaBackground2.Opacity = 0;
 
-        SecondaryContent.Visibility = Visibility.Collapsed;
-        TimerContent.Visibility = Visibility.Collapsed;
-
         ExpandedContent.Opacity = 0;
-        ExpandedContent.Visibility = Visibility.Visible;
+        ExpandedContent.Visibility = Visibility.Collapsed;
+        SecondaryContent.Opacity = 0;
+        SecondaryContent.Visibility = Visibility.Collapsed;
+        TimerContent.Opacity = 0;
+        TimerContent.Visibility = Visibility.Collapsed;
+        AudioContent.Opacity = 0;
+        AudioContent.Visibility = Visibility.Collapsed;
+        DisplayContent.Opacity = 0;
+        DisplayContent.Visibility = Visibility.Collapsed;
+        PiggyBankContent.Opacity = 0;
+        PiggyBankContent.Visibility = Visibility.Collapsed;
+
+        double expandTargetWidth;
+        double expandTargetHeight;
+        FrameworkElement revealContent;
+
+        _isSecondaryView = false;
+        _isTimerView = false;
+        _isAudioView = false;
+        _isDisplayView = false;
+        _isPiggyBankView = false;
+
+        switch (directExpandDestination)
+        {
+            case HoverLauncherDestination.FileShelf:
+                SuspendSpotifyCanvasLifecycle();
+                HideMediaBackground();
+                HideLyricsBlurForUtility();
+                UpdateShelfCapacityIndicator();
+                EnableKeyboardInput();
+                ShowUtilityNavigation();
+                ApplySharedStatusBarMode(utilityMode: true);
+                SecondaryContent.Width = _expandedWidth
+                    - SecondaryContent.Margin.Left - SecondaryContent.Margin.Right;
+                SecondaryContent.UpdateLayout();
+                SecondaryContent.Visibility = Visibility.Visible;
+                revealContent = SecondaryContent;
+                expandTargetWidth = _expandedWidth;
+                expandTargetHeight = SecondaryViewHeight;
+                break;
+
+            case HoverLauncherDestination.Timer:
+                _isTimerView = true;
+                SuspendSpotifyCanvasLifecycle();
+                HideMediaBackgroundOverlay();
+                HideLyricsBlurForUtility();
+                ShowUtilityNavigation();
+                PrepareClockViewContentSize();
+                RefreshClockView();
+                ResetClockViewChildVisuals();
+                RestoreTimerContentOpacity();
+                TimerContent.Visibility = Visibility.Visible;
+                revealContent = TimerContent;
+                expandTargetWidth = _clockViewWidth;
+                expandTargetHeight = _clockViewHeight;
+                break;
+
+            case HoverLauncherDestination.Audio:
+                _isAudioView = true;
+                SuppressPrivacyDot();
+                SuspendSpotifyCanvasLifecycle();
+                HideMediaBackground();
+                HideLyricsBlurForUtility();
+                ShowUtilityNavigation();
+                if (_lastAudioSnapshot != null)
+                {
+                    SetAudioLoadingState(false);
+                    EnsureAudioUIBuilt(_lastAudioSnapshot);
+                }
+                else
+                {
+                    SetAudioLoadingState(true);
+                    _audioViewHeight = _audioViewMaxHeight;
+                }
+                AudioContent.Visibility = Visibility.Visible;
+                revealContent = AudioContent;
+                expandTargetWidth = _audioViewWidth;
+                expandTargetHeight = _audioViewHeight;
+                RefreshAudioData();
+                break;
+
+            case HoverLauncherDestination.Display:
+                _isDisplayView = true;
+                SuspendSpotifyCanvasLifecycle();
+                HideMediaBackground();
+                HideLyricsBlurForUtility();
+                EnsureDisplayViewBuilt();
+                EnsureDisplayPresetBar();
+                RebuildDisplayMonitorSections();
+                RecalculateDisplayFitHeight(animate: false);
+                ShowUtilityNavigation();
+                PrepareDisplayContentLayout();
+                DisplayContent.Visibility = Visibility.Visible;
+                revealContent = DisplayContent;
+                expandTargetWidth = _displayViewWidth;
+                expandTargetHeight = _displayViewHeight;
+                _ = _displayViewModel.RefreshAsync();
+                break;
+
+            case HoverLauncherDestination.PiggyBank:
+                _isPiggyBankView = true;
+                EnsurePiggyBankViewBuilt();
+                SuspendSpotifyCanvasLifecycle();
+                HideMediaBackground();
+                HideLyricsBlurForUtility();
+                ShowUtilityNavigation();
+                RefreshPiggyClockText();
+                PreparePiggyBankContentLayout();
+                PiggyBankContent.Visibility = Visibility.Visible;
+                revealContent = PiggyBankContent;
+                expandTargetWidth = PiggyBankViewWidth;
+                expandTargetHeight = _piggyBankViewHeight;
+                break;
+
+            default:
+                ExpandedContent.Visibility = Visibility.Visible;
+                ExpandedContent.Width = _expandedWidth - 24;
+                ExpandedContent.Height = _expandedHeight - 18;
+                // The cold-open layout has not yet run the media sizing callbacks that
+                PrepareExpandedContentLayoutForReveal();
+                revealContent = ExpandedContent;
+                expandTargetWidth = _expandedWidth;
+                expandTargetHeight = _expandedHeight;
+                break;
+        }
+
+        ResizeHostWindowHeight(expandTargetHeight);
 
         if (_isLyricsActive && LyricsBlurBackground != null)
         {
@@ -511,28 +652,23 @@ public partial class MainWindow
             LyricsCanvasBackground.BeginAnimation(OpacityProperty, null);
             LyricsCanvasBackground.Opacity = 0;
         }
-        ExpandedContent.Width = _expandedWidth - 24;
-        ExpandedContent.Height = _expandedHeight - 18;
-        // The cold-open layout has not yet run the media sizing callbacks that
-        PrepareExpandedContentLayoutForReveal();
-
         AnimateStatusBarReveal(true);
 
         NotchBorder.IsHitTestVisible = false;
         int animFps = VNotch.Services.AnimationConfig.TargetFps;
 
         // Land layout geometry at 500 ms, then hold the exact device-pixel frame
-        var widthAnim = MakeExpandGeometryAnimation(currentWidth, _expandedWidth, _easeExpOut6, animFps);
-        var heightAnim = MakeExpandGeometryAnimation(currentHeight, _expandedHeight, _easeExpOut6, animFps);
+        var widthAnim = MakeExpandGeometryAnimation(currentWidth, expandTargetWidth, _easeExpOut6, animFps);
+        var heightAnim = MakeExpandGeometryAnimation(currentHeight, expandTargetHeight, _easeExpOut6, animFps);
         var fadeOutAnim = MakeAnim(0, _dur200, _easeQuadOut);
 
-        double contentTargetY = ExpandedContentRestY;
+        double contentTargetY = directUtilityExpand ? 0 : ExpandedContentRestY;
         var expandedGroup = new TransformGroup();
         // Keep the resting value below the animation clock. The held clock stays
         var expandedTranslate = new TranslateTransform(0, contentTargetY);
         expandedGroup.Children.Add(expandedTranslate);
-        ExpandedContent.RenderTransform = expandedGroup;
-        ExpandedContent.RenderTransformOrigin = new Point(0.5, 0.4);
+        revealContent.RenderTransform = expandedGroup;
+        revealContent.RenderTransformOrigin = new Point(0.5, 0.4);
 
         var fadeInAnim = MakeAnim(0d, 1d, _dur400, _easePowerOut3);
         var springSlide = MakeAnim(10, contentTargetY, _dur400, _easeExpOut6);
@@ -542,9 +678,10 @@ public partial class MainWindow
         double contentBlurRadius = _settings.EnableBlurEffects ? 24 : 0;
         var blurOutAnim = MakeAnim(0, contentBlurRadius, _dur350, _easeQuadIn);
         var blurInAnim = MakeAnim(contentBlurRadius, 0, _dur500, _easePowerOut3);
-        ExpandedContentBlur.Radius = contentBlurRadius;
+        if (!directUtilityExpand)
+            ExpandedContentBlur.Radius = contentBlurRadius;
 
-        if (_isMusicCompactMode && CompactThumbnail.Source != null && !suppressCompactThumbnailMotion)
+        if (!directUtilityExpand && _isMusicCompactMode && CompactThumbnail.Source != null && !suppressCompactThumbnailMotion)
         {
             var cachedExpandTarget = _cachedThumbnailExpandTarget;
             if (!cachedExpandTarget.HasValue)
@@ -678,11 +815,68 @@ public partial class MainWindow
 
         heightAnim.Completed += (s, e) =>
         {
-            StopMainViewHorizontalStabilizer();
+            if (!directUtilityExpand)
+                StopMainViewHorizontalStabilizer();
             _isAnimating = false;
             _isExpanded = true;
             _notchState.TryTransitionTo(NotchState.Expanded);
             NotchBorder.IsHitTestVisible = true;
+
+            CollapsedContent.Visibility = Visibility.Collapsed;
+            MusicCompactContent.Visibility = Visibility.Collapsed;
+
+            if (directUtilityExpand)
+            {
+                if (directExpandDestination == HoverLauncherDestination.FileShelf)
+                {
+                    _isSecondaryView = true;
+                }
+
+                revealContent.BeginAnimation(OpacityProperty, null);
+                revealContent.Opacity = 1;
+                revealContent.RenderTransform = null;
+
+                switch (directExpandDestination)
+                {
+                    case HoverLauncherDestination.FileShelf:
+                        SecondaryContent.Width = double.NaN;
+                        SecondaryContent.UpdateLayout();
+                        ResetCameraSectionLayoutInstant();
+                        break;
+                    case HoverLauncherDestination.Timer:
+                        RestoreTimerContentOpacity();
+                        UpdateTimerDisplay();
+                        break;
+                    case HoverLauncherDestination.Audio:
+                        if (!ApplyPendingAudioSnapshot())
+                            SettleAudioNotchToFit();
+                        StartAudioPoll();
+                        break;
+                    case HoverLauncherDestination.Display:
+                        SettleDisplayNotchToFit();
+                        break;
+                    case HoverLauncherDestination.PiggyBank:
+                        StartPiggyClock();
+                        _ = RefreshPiggyBankAsync();
+                        break;
+                }
+
+                _pendingHoverLauncherDestination = null;
+                // Audio and Display can discover their final content height while
+                // a remembered-panel cold-open is still animating. Use the latest
+                // settled height rather than restoring the stale pre-refresh size.
+                ResizeHostWindowHeight(ResolveDirectExpandSettledHostHeight(
+                    directExpandDestination,
+                    _expandedHeight,
+                    _clockViewHeight,
+                    _audioViewHeight,
+                    _displayViewHeight,
+                    _piggyBankViewHeight));
+                UpdateNavIconsActiveState();
+                UpdateHoverLauncherActiveState();
+                RememberHoverLauncherDestination(directExpandDestination);
+                return;
+            }
 
             RestoreExpandedContentOpacity();
 
@@ -759,54 +953,33 @@ public partial class MainWindow
                 SuppressCompactMediaChromeForCountdownCompletion();
             }
 
-            CollapsedContent.Visibility = Visibility.Collapsed;
-            MusicCompactContent.Visibility = Visibility.Collapsed;
-
-            if (_settings.ReopenLastViewOnExpand && !_isSecondaryView && !_isTimerView && !_isAudioView && !_isPiggyBankView)
-            {
-                if (_lastExpandedViewBeforeCollapse == LastExpandedView.Secondary)
-                {
-                    SwitchToSecondaryView();
-                }
-                else if (_lastExpandedViewBeforeCollapse == LastExpandedView.Timer)
-                {
-                    SwitchToTimerView();
-                }
-                else if (_lastExpandedViewBeforeCollapse == LastExpandedView.Audio)
-                {
-                    SwitchToAudioView();
-                }
-                else if (_lastExpandedViewBeforeCollapse == LastExpandedView.Display)
-                {
-                    SwitchToDisplayView();
-                }
-                else if (_lastExpandedViewBeforeCollapse == LastExpandedView.PiggyBank)
-                {
-                    SwitchToPiggyBankView();
-                }
-            }
+            _pendingHoverLauncherDestination = null;
+            UpdateHoverLauncherActiveState();
+            RememberHoverLauncherDestination(HoverLauncherDestination.Home);
         };
 
         // Begin stabilization only after the hidden final-layout measurement.
-        StartMainViewHorizontalStabilizer(expandedTranslate);
+        if (!directUtilityExpand)
+            StartMainViewHorizontalStabilizer(expandedTranslate);
 
         NotchBorder.BeginAnimation(WidthProperty, widthAnim);
         NotchBorder.BeginAnimation(HeightProperty, heightAnim);
         // Set the destinations as animation bases while the explicit From/To
-        NotchBorder.Width = _expandedWidth;
-        NotchBorder.Height = _expandedHeight;
+        NotchBorder.Width = expandTargetWidth;
+        NotchBorder.Height = expandTargetHeight;
         CollapsedContent.BeginAnimation(OpacityProperty, fadeOutAnim);
         MusicCompactContent.BeginAnimation(OpacityProperty, fadeOutAnim);
 
         CollapsedContentBlur.BeginAnimation(BlurEffect.RadiusProperty, blurOutAnim);
         MusicCompactContentBlur.BeginAnimation(BlurEffect.RadiusProperty, blurOutAnim);
 
-        ExpandedContent.BeginAnimation(OpacityProperty, fadeInAnim);
+        revealContent.BeginAnimation(OpacityProperty, fadeInAnim);
         // Preserve the fully-visible value underneath the HoldEnd clock. The
-        ExpandedContent.Opacity = 1;
+        revealContent.Opacity = 1;
         expandedTranslate.BeginAnimation(TranslateTransform.YProperty, springSlide);
 
-        ExpandedContentBlur.BeginAnimation(BlurEffect.RadiusProperty, blurInAnim);
+        if (!directUtilityExpand)
+            ExpandedContentBlur.BeginAnimation(BlurEffect.RadiusProperty, blurInAnim);
 
         HoverGlow.BeginAnimation(OpacityProperty, glowAnim);
         AnimateCornerRadius(_cornerRadiusExpanded, TimeSpan.FromMilliseconds(400));
@@ -818,24 +991,22 @@ public partial class MainWindow
 
         StopMainViewHorizontalStabilizer();
 
-        _lastExpandedViewBeforeCollapse = _isPiggyBankView
-            ? LastExpandedView.PiggyBank
-            : _isDisplayView
-            ? LastExpandedView.Display
-            : _isAudioView
-            ? LastExpandedView.Audio
-            : _isTimerView
-                ? LastExpandedView.Timer
-                : _isSecondaryView
-                    ? LastExpandedView.Secondary
-                    : LastExpandedView.Primary;
+        _lastExpandedViewBeforeCollapse = ResolveActiveHoverLauncherDestination(
+            _isSecondaryView,
+            _isTimerView,
+            _isAudioView,
+            _isDisplayView,
+            _isPiggyBankView);
+        RememberHoverLauncherDestination(_lastExpandedViewBeforeCollapse);
 
         if (_isSecondaryView)
         {
             StopCameraPreviewForViewExit();
         }
+        if (!_notchState.TryTransitionTo(NotchState.Collapsing)) return;
         _isAnimating = true;
-        _notchState.TryTransitionTo(NotchState.Collapsing);
+        _collapseRecoveryTimer.Stop();
+        _collapseRecoveryTimer.Start();
         SuspendSpotifyCanvasLifecycle();
         bool suppressCompactThumbnailMotion = IsCountdownCompletionVisualActive;
         if (suppressCompactThumbnailMotion)
@@ -1209,6 +1380,7 @@ public partial class MainWindow
 
         heightAnim.Completed += (s, e) =>
         {
+            _collapseRecoveryTimer.Stop();
             _isAnimating = false;
             _isExpanded = false;
             _notchState.TryTransitionTo(NotchState.Collapsed);
@@ -1289,6 +1461,8 @@ public partial class MainWindow
                 ResetAnimationThumbnailOverlay();
             }
 
+            RestoreIdleShellChromeAfterCollapse();
+
             if (CompactThumbnailBorder != null && !_isClipboardPeekActive && !_isVolumeIndicatorActive && !suppressCompactThumbnailMotion)
             {
                 CompactThumbnailBorder.BeginAnimation(OpacityProperty, null);
@@ -1346,6 +1520,57 @@ public partial class MainWindow
 
         HoverGlow.BeginAnimation(OpacityProperty, glowAnim);
         AnimateCornerRadius(_cornerRadiusCollapsed, TimeSpan.FromMilliseconds(400));
+    }
+
+    private void RecoverInterruptedCollapse()
+    {
+        if (_notchState.CurrentState != NotchState.Collapsing) return;
+
+        RuntimeLog.Warn("STATE",
+            $"Collapse animation did not complete after {_notchState.TimeSinceLastTransition.TotalMilliseconds:0}ms; restoring collapsed state.");
+
+        NotchBorder.BeginAnimation(WidthProperty, null);
+        NotchBorder.BeginAnimation(HeightProperty, null);
+        NotchBorder.Width = _collapsedWidth;
+        NotchBorder.Height = _collapsedHeight;
+        NotchBorder.IsHitTestVisible = true;
+
+        ExpandedContent.BeginAnimation(OpacityProperty, null);
+        ExpandedContent.Opacity = 0;
+        ExpandedContent.Visibility = Visibility.Collapsed;
+        SecondaryContent.BeginAnimation(OpacityProperty, null);
+        SecondaryContent.Opacity = 0;
+        SecondaryContent.Visibility = Visibility.Collapsed;
+        TimerContent.BeginAnimation(OpacityProperty, null);
+        TimerContent.Opacity = 0;
+        TimerContent.Visibility = Visibility.Collapsed;
+        AudioContent.BeginAnimation(OpacityProperty, null);
+        AudioContent.Opacity = 0;
+        AudioContent.Visibility = Visibility.Collapsed;
+        DisplayContent.BeginAnimation(OpacityProperty, null);
+        DisplayContent.Opacity = 0;
+        DisplayContent.Visibility = Visibility.Collapsed;
+        PiggyBankContent.BeginAnimation(OpacityProperty, null);
+        PiggyBankContent.Opacity = 0;
+        PiggyBankContent.Visibility = Visibility.Collapsed;
+
+        _isSecondaryView = false;
+        _isTimerView = false;
+        _isAudioView = false;
+        _isDisplayView = false;
+        _isPiggyBankView = false;
+        _isAnimating = false;
+        _notchState.ForceState(NotchState.Collapsed);
+
+        NavIconsPanel.BeginAnimation(OpacityProperty, null);
+        NavIconsPanel.Opacity = 0;
+        NavIconsPanel.Visibility = Visibility.Collapsed;
+        NavIconsBackground.BeginAnimation(OpacityProperty, null);
+        NavIconsBackground.Opacity = 0;
+        NavIconsBackground.Visibility = Visibility.Collapsed;
+        RestoreIdleShellChromeAfterCollapse();
+        UpdateHoverLauncherPlacement();
+        ScheduleHoverLauncherHide();
     }
 
     #endregion
